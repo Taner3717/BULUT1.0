@@ -21,7 +21,13 @@
       "package": "com.bulut.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "static",
+      "name": "Bulut",
+      "shortName": "Bulut",
+      "themeColor": "#10B981",
+      "backgroundColor": "#F3FAF6",
+      "lang": "tr"
     },
     "plugins": [
       [

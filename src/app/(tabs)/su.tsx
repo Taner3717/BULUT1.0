@@ -193,7 +193,11 @@ export default function SuEkrani() {
           klavye="number-pad"
         />
         <Buton baslik="Ayarları kaydet" ikon="checkmark" bas={ayarlariKaydet} />
-        <Soluk>Bildirimdeki “+250 ml içtim” butonu suyu doğrudan kaydeder.</Soluk>
+        <Soluk>
+          {Platform.OS === 'web'
+            ? 'Web uygulamasında (Safari / Ana Ekran) bildirim gönderilemez; hatırlatıcı yalnızca TestFlight ya da mağaza sürümünde çalışır.'
+            : 'Bildirimdeki “+250 ml içtim” butonu suyu doğrudan kaydeder.'}
+        </Soluk>
       </Kart>
 
       {kayitlar.length > 0 && (

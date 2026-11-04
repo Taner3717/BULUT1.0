@@ -3,12 +3,19 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { TemaSaglayici, useTema } from '../lib/tema';
 import { DB_ADI, ayarGetir, ayarKaydet, suEkle, veritabaniHazirla } from '../lib/db';
 import { SU_AKSIYON_ML, SU_EKLE_AKSIYON, bildirimIsleyiciKur } from '../lib/notifications';
 
 bildirimIsleyiciKur();
+
+// react-native-web'de Alert.alert hiçbir şey göstermez; iPhone web uygulamasında uyarılar görünsün
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  Alert.alert = (baslik, mesaj) => {
+    window.alert([baslik, mesaj].filter(Boolean).join('\n\n'));
+  };
+}
 
 /** Bildirimdeki "+250 ml içtim" butonuna basılınca su kaydı ekler. */
 function SuBildirimDinleyici() {
