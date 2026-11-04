@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { TemaSaglayici, useTema } from '../lib/tema';
 import { DB_ADI, ayarGetir, ayarKaydet, suEkle, veritabaniHazirla } from '../lib/db';
 import { SU_AKSIYON_ML, SU_EKLE_AKSIYON, bildirimIsleyiciKur } from '../lib/notifications';
 
@@ -36,16 +37,35 @@ function SuBildirimDinleyici() {
   return null;
 }
 
+function TemaliYigin() {
+  const { renk, koyuMu } = useTema();
+  return (
+    <>
+      <StatusBar style={koyuMu ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: renk.arka },
+          headerTintColor: renk.metin,
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: '700' },
+          contentStyle: { backgroundColor: renk.arka },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="profil" options={{ title: 'Profil & Ayarlar', presentation: 'modal' }} />
+        <Stack.Screen name="foto" options={{ title: 'Fotoğrafla ekle', presentation: 'modal' }} />
+      </Stack>
+    </>
+  );
+}
+
 export default function KokDuzen() {
   return (
     <SQLiteProvider databaseName={DB_ADI} onInit={veritabaniHazirla}>
-      <StatusBar style="dark" />
-      <SuBildirimDinleyici />
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="profil" options={{ title: 'Profil', presentation: 'modal' }} />
-        <Stack.Screen name="foto" options={{ title: 'Fotoğrafla ekle', presentation: 'modal' }} />
-      </Stack>
+      <TemaSaglayici>
+        <SuBildirimDinleyici />
+        <TemaliYigin />
+      </TemaSaglayici>
     </SQLiteProvider>
   );
 }

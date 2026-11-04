@@ -2,6 +2,7 @@
 
 iOS ve Android için kalori, kilo/vücut ölçüsü, uyku ve su takibi uygulaması.
 Expo (React Native) + TypeScript ile yazıldı; tüm veriler telefonda SQLite'ta saklanır.
+Tasarım: yeşil palet, otomatik karanlık mod (Profil → Görünüm'den Açık/Koyu seçilebilir), halkalı ana ekran.
 
 ## Özellikler (MVP)
 
@@ -79,6 +80,7 @@ src/
     calc.ts            Vücut/beslenme formülleri (+ calc.test.ts)
     db.ts              SQLite tabloları ve sorgular
     hedef.ts           Günlük kalori/makro/su hedefleri
+    tema.tsx           Açık/koyu renk paletleri ve tema seçimi
     notifications.ts   Su hatırlatıcısı
     supabase.ts        Anonim oturum + fotoğraf analizi çağrısı
 supabase/

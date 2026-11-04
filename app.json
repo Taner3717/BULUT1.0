@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bulut.app"
@@ -43,7 +43,8 @@
           "cameraPermission": "Bulut, öğün fotoğrafı çekip kalori hesaplamak için kameraya erişir.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-font"
     ],
     "scheme": "bulut",
     "experiments": {
