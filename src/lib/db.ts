@@ -1,15 +1,18 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Cinsiyet } from './calc';
 import fatsecretVerisi from '../data/kisisel/fatsecret.json';
+import usdaVerisi from '../data/besinler-usda.json';
+import { aramaMetni } from './metin';
 
 export const DB_ADI = 'bulut.db';
-const DB_SURUM = 2;
+const DB_SURUM = 3;
 
 /** SQLiteProvider onInit: tabloları oluşturur, ileride sürüm bazlı göç (migration) ekler. */
 export async function veritabaniHazirla(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const surum = row?.user_version ?? 0;
   if (surum >= DB_SURUM) {
+    await genelVeriyiAktar(db);
     await kisiselVeriyiAktar(db);
     return;
   }
@@ -104,8 +107,54 @@ export async function veritabaniHazirla(db: SQLiteDatabase) {
       );
     `);
   }
+  if (surum < 3) {
+    // Türkçe karakterden bağımsız arama, kategori, porsiyon listesi ve barkod
+    await db.execAsync(`
+      ALTER TABLE besinler ADD COLUMN arama TEXT;
+      ALTER TABLE besinler ADD COLUMN kategori TEXT;
+      ALTER TABLE besinler ADD COLUMN porsiyonlar TEXT;
+      ALTER TABLE besinler ADD COLUMN kod TEXT;
+      CREATE INDEX IF NOT EXISTS besinler_kullanim ON besinler(kullanim DESC);
+    `);
+    const mevcut = await db.getAllAsync<{ id: number; ad: string }>('SELECT id, ad FROM besinler');
+    for (const b of mevcut) await db.runAsync('UPDATE besinler SET arama = ? WHERE id = ?', aramaMetni(b.ad), b.id);
+  }
   await db.execAsync(`PRAGMA user_version = ${DB_SURUM}`);
+  await genelVeriyiAktar(db);
   await kisiselVeriyiAktar(db);
+}
+
+type UsdaBesin = {
+  ad: string;
+  kategori: string;
+  kaynak: string;
+  fdc: number | null;
+  kcal: number;
+  porsiyonlar: { ad: string; gram: number }[];
+} & Partial<Record<EkAlan | 'protein' | 'karb' | 'yag', number | null>>;
+
+/** Uygulamayla gelen doğrulanmış USDA listesini yükler; veri sürümü değişince günceller. Kişisel kayıtlara dokunmaz. */
+async function genelVeriyiAktar(db: SQLiteDatabase) {
+  const veri = usdaVerisi as unknown as { surum: string; besinler: UsdaBesin[] };
+  const anahtar = `genel_veri_${veri.surum}`;
+  if (await db.getFirstAsync('SELECT 1 FROM ayarlar WHERE anahtar = ?', anahtar)) return;
+  await db.withTransactionAsync(async () => {
+    for (const b of veri.besinler) {
+      await db.runAsync(
+        `INSERT INTO besinler (ad, arama, kategori, birim, referans, varsayilan, kcal, protein, karb, yag, doymus, lif, seker, sodyum, potasyum, kolesterol, porsiyonlar, kod, kullanim, kaynak)
+         VALUES (?, ?, ?, 'g', 100, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'usda')
+         ON CONFLICT(ad) DO UPDATE SET kcal = excluded.kcal, protein = excluded.protein, karb = excluded.karb, yag = excluded.yag,
+           doymus = excluded.doymus, lif = excluded.lif, seker = excluded.seker, sodyum = excluded.sodyum,
+           potasyum = excluded.potasyum, kolesterol = excluded.kolesterol, porsiyonlar = excluded.porsiyonlar,
+           kategori = excluded.kategori, arama = excluded.arama
+         WHERE besinler.kaynak = 'usda'`,
+        b.ad, aramaMetni(b.ad), b.kategori, b.porsiyonlar[0]?.gram ?? 100, b.kcal, b.protein ?? null, b.karb ?? null, b.yag ?? null,
+        b.doymus ?? null, b.lif ?? null, b.seker ?? null, b.sodyum ?? null, b.potasyum ?? null, b.kolesterol ?? null,
+        JSON.stringify(b.porsiyonlar), b.fdc != null ? `fdc:${b.fdc}` : null,
+      );
+    }
+    await db.runAsync('INSERT INTO ayarlar (anahtar, deger) VALUES (?, ?)', anahtar, JSON.stringify({ adet: veri.besinler.length }));
+  });
 }
 
 type FatSecretVerisi = {
@@ -127,10 +176,10 @@ async function kisiselVeriyiAktar(db: SQLiteDatabase) {
   await db.withTransactionAsync(async () => {
     for (const b of veri.besinler) {
       await db.runAsync(
-        `INSERT INTO besinler (ad, birim, referans, varsayilan, kcal, protein, karb, yag, doymus, lif, seker, sodyum, potasyum, kolesterol, kullanim, son, kaynak)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fatsecret')
+        `INSERT INTO besinler (ad, arama, birim, referans, varsayilan, kcal, protein, karb, yag, doymus, lif, seker, sodyum, potasyum, kolesterol, kullanim, son, kaynak)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fatsecret')
          ON CONFLICT(ad) DO UPDATE SET kullanim = MAX(besinler.kullanim, excluded.kullanim)`,
-        b.ad, b.birim, b.referans, b.varsayilan ?? null, b.kcal, b.protein ?? null, b.karb ?? null, b.yag ?? null,
+        b.ad, aramaMetni(b.ad), b.birim, b.referans, b.varsayilan ?? null, b.kcal, b.protein ?? null, b.karb ?? null, b.yag ?? null,
         b.doymus ?? null, b.lif ?? null, b.seker ?? null, b.sodyum ?? null, b.potasyum ?? null, b.kolesterol ?? null,
         b.kullanim ?? 0, b.son ?? null,
       );
@@ -179,7 +228,19 @@ export type Besin = {
   kullanim: number;
   son: string | null;
   kaynak: string;
+  kategori: string | null;
+  /** JSON: { ad, gram }[] */
+  porsiyonlar: string | null;
+  kod: string | null;
 } & EkDegerler;
+
+export function porsiyonlariOku(b: Pick<Besin, 'porsiyonlar'>): { ad: string; gram: number }[] {
+  try {
+    return b.porsiyonlar ? JSON.parse(b.porsiyonlar) : [];
+  } catch {
+    return [];
+  }
+}
 
 export type Ogun = {
   id: number;
@@ -303,15 +364,34 @@ export async function gunlukToplam(db: SQLiteDatabase, tarih: string): Promise<G
 
 // ---------- Yiyeceklerim ----------
 
+/** Türkçe karakterden bağımsız arama. Boş sorguda en sık yenenler. Kendi kayıtların önce gelir. */
 export function besinAra(db: SQLiteDatabase, sorgu: string, limit = 8) {
-  const q = sorgu.trim();
+  const q = aramaMetni(sorgu);
   if (!q) {
-    return db.getAllAsync<Besin>('SELECT * FROM besinler ORDER BY kullanim DESC, son DESC LIMIT ?', limit);
+    return db.getAllAsync<Besin>('SELECT * FROM besinler WHERE kullanim > 0 ORDER BY kullanim DESC, son DESC LIMIT ?', limit);
   }
+  const kelimeler = q.split(' ').filter(Boolean).slice(0, 5);
+  const kosul = kelimeler.map(() => 'arama LIKE ?').join(' AND ');
   return db.getAllAsync<Besin>(
-    `SELECT * FROM besinler WHERE ad LIKE ? ORDER BY (ad LIKE ?) DESC, kullanim DESC LIMIT ?`,
-    `%${q}%`, `${q}%`, limit,
+    `SELECT * FROM besinler WHERE ${kosul}
+     ORDER BY (arama LIKE ?) DESC, kullanim DESC, (kaynak = 'usda') DESC, length(ad) LIMIT ?`,
+    ...kelimeler.map((k) => `%${k}%`), `${q}%`, limit,
   );
+}
+
+/** İnternetten (Open Food Facts) seçilen ürünü Yiyeceklerim'e ekler ve kaydını döner. */
+export async function disBesinEkle(
+  db: SQLiteDatabase,
+  u: { kod: string; ad: string; kcal: number; protein: number | null; karb: number | null; yag: number | null; porsiyon: { ad: string; gram: number } | null } & EkDegerler,
+) {
+  await db.runAsync(
+    `INSERT INTO besinler (ad, arama, kategori, birim, referans, varsayilan, kcal, protein, karb, yag, doymus, lif, seker, sodyum, potasyum, kolesterol, porsiyonlar, kod, kullanim, kaynak)
+     VALUES (?, ?, 'Paketli ürün', 'g', 100, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'off')
+     ON CONFLICT(ad) DO NOTHING`,
+    u.ad, aramaMetni(u.ad), u.porsiyon?.gram ?? 100, u.kcal, u.protein, u.karb, u.yag, u.doymus, u.lif, u.seker,
+    u.sodyum, u.potasyum, u.kolesterol, JSON.stringify(u.porsiyon ? [u.porsiyon] : []), `off:${u.kod}`,
+  );
+  return db.getFirstAsync<Besin>('SELECT * FROM besinler WHERE ad = ?', u.ad);
 }
 
 /** Seçilen yiyeceğin kullanım sayısını artırır. */
@@ -331,11 +411,11 @@ export function besinKaydet(
   const k = gramli ? 100 / (b.gram as number) : 1;
   const o = (v: number | null | undefined) => (v == null ? null : Math.round(v * k * 100) / 100);
   return db.runAsync(
-    `INSERT INTO besinler (ad, birim, referans, varsayilan, kcal, protein, karb, yag, doymus, lif, seker, sodyum, potasyum, kolesterol, kullanim, son, kaynak)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'elle')
+    `INSERT INTO besinler (ad, arama, birim, referans, varsayilan, kcal, protein, karb, yag, doymus, lif, seker, sodyum, potasyum, kolesterol, kullanim, son, kaynak)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'elle')
      ON CONFLICT(ad) DO UPDATE SET kullanim = besinler.kullanim + 1, son = excluded.son,
        varsayilan = COALESCE(excluded.varsayilan, besinler.varsayilan)`,
-    b.ad, gramli ? 'g' : 'porsiyon', gramli ? 100 : 1, b.gram, o(b.kcal), o(b.protein), o(b.karb), o(b.yag),
+    b.ad, aramaMetni(b.ad), gramli ? 'g' : 'porsiyon', gramli ? 100 : 1, b.gram, o(b.kcal), o(b.protein), o(b.karb), o(b.yag),
     o(b.doymus), o(b.lif), o(b.seker), o(b.sodyum), o(b.potasyum), o(b.kolesterol), tarihStr(),
   );
 }

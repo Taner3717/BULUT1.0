@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { besinHesapla, sayiOku } from '../lib/calc';
-import { besinAra, besinKaydet, besinKullanildi, ogunEkle, type Besin } from '../lib/db';
+import { besinAra, besinKaydet, besinKullanildi, disBesinEkle, ogunEkle, porsiyonlariOku, type Besin } from '../lib/db';
+import { offAra, type OffUrun } from '../lib/openfoodfacts';
+import type { Renkler } from '../lib/tema';
 import { useRenk } from '../lib/tema';
 import { Alan, Buton, Etiket, Ikon, Kart, Satir, Secenekler, Soluk } from './ui';
 
@@ -24,6 +26,27 @@ function varsayilanOgun(): string {
   return 'Ara öğün';
 }
 
+function kaynakBilgisi(k: string, r: Renkler): { ad: string; uzun: string; renk: string } {
+  switch (k) {
+    case 'usda':
+      return { ad: 'USDA', uzun: 'USDA FoodData Central · doğrulandı', renk: r.su };
+    case 'fatsecret':
+      return { ad: 'FatSecret', uzun: 'FatSecret günlüğünden', renk: r.ana };
+    case 'off':
+      return { ad: 'İnternet', uzun: 'Open Food Facts · kullanıcı katkılı, etiketle karşılaştır', renk: r.turuncu };
+    default:
+      return { ad: 'Benim', uzun: 'Kendi kaydın', renk: r.uyku };
+  }
+}
+
+function Rozet({ metin: m, renk }: { metin: string; renk: string }) {
+  return (
+    <View style={{ backgroundColor: renk + '22', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+      <Text style={{ color: renk, fontSize: 10, fontWeight: '800' }}>{m}</Text>
+    </View>
+  );
+}
+
 function metin(v: number | null | undefined) {
   return v == null ? '' : String(Math.round(v * 10) / 10);
 }
@@ -37,11 +60,32 @@ export function ElleEkleFormu({ db, tarih, eklendi }: { db: SQLiteDatabase; tari
   const [secili, setSecili] = useState<Besin | null>(null);
   const [oneriler, setOneriler] = useState<Besin[]>([]);
   const [digerAcik, setDigerAcik] = useState(false);
+  const [webSonuc, setWebSonuc] = useState<OffUrun[] | null>(null);
+  const [webAraniyor, setWebAraniyor] = useState(false);
+  const [webHata, setWebHata] = useState<string | null>(null);
+
+  async function internetteAra() {
+    setWebAraniyor(true);
+    setWebHata(null);
+    try {
+      setWebSonuc(await offAra(yemek.trim()));
+    } catch (e) {
+      setWebHata(e instanceof Error ? e.message : String(e));
+    } finally {
+      setWebAraniyor(false);
+    }
+  }
+
+  async function webSec(u: OffUrun) {
+    const b = await disBesinEkle(db, u);
+    setWebSonuc(null);
+    if (b) sec(b);
+  }
 
   useEffect(() => {
     if (secili) return; // seçim yapılmışken öneri listesi gizli
     let iptal = false;
-    besinAra(db, yemek, yemek.trim() ? 6 : 10).then((l) => !iptal && setOneriler(l));
+    besinAra(db, yemek, 10).then((l) => !iptal && setOneriler(l));
     return () => {
       iptal = true;
     };
@@ -82,6 +126,7 @@ export function ElleEkleFormu({ db, tarih, eklendi }: { db: SQLiteDatabase; tari
     setMiktar('');
     setAlan(BOS);
     setSecili(null);
+    setWebSonuc(null);
   }
 
   async function ekle() {
@@ -122,10 +167,12 @@ export function ElleEkleFormu({ db, tarih, eklendi }: { db: SQLiteDatabase; tari
       <View style={{ gap: 8 }}>
         <Satir style={{ alignItems: 'flex-end' }}>
           <Alan
-            etiket="Yemek (Yiyeceklerim’de ara)"
+            etiket="Yemek ara"
             deger={yemek}
             degistir={(t) => {
               setYemek(t);
+              setWebSonuc(null);
+              setWebHata(null);
               if (secili && t !== secili.ad) setSecili(null);
             }}
             ipucu="ör. tavuk, muz, yoğurt"
@@ -136,19 +183,47 @@ export function ElleEkleFormu({ db, tarih, eklendi }: { db: SQLiteDatabase; tari
         </Satir>
 
         {secili && (
-          <Satir style={{ backgroundColor: r.anaAcik, borderRadius: 12, padding: 10 }}>
-            <Ikon ad="checkmark-circle" boyut={18} renk={r.anaKoyu} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: r.anaKoyu, fontWeight: '700', fontSize: 13 }}>Yiyeceklerim’den dolduruldu</Text>
-              <Text style={{ color: r.anaKoyu, fontSize: 12 }}>
-                {secili.referans} {secili.birim === 'porsiyon' ? 'porsiyon' : secili.birim} = {Math.round(secili.kcal)} kcal ·{' '}
-                {secili.kullanim} kez yendi
-              </Text>
-            </View>
-            <Pressable onPress={temizle} hitSlop={8}>
-              <Ikon ad="close" boyut={18} renk={r.anaKoyu} />
-            </Pressable>
-          </Satir>
+          <View style={{ backgroundColor: r.anaAcik, borderRadius: 12, padding: 10, gap: 8 }}>
+            <Satir>
+              <Ikon ad="checkmark-circle" boyut={18} renk={r.anaKoyu} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: r.anaKoyu, fontWeight: '700', fontSize: 13 }}>{kaynakBilgisi(secili.kaynak, r).uzun}</Text>
+                <Text style={{ color: r.anaKoyu, fontSize: 12 }}>
+                  {secili.referans} {secili.birim === 'porsiyon' ? 'porsiyon' : secili.birim} = {Math.round(secili.kcal)} kcal
+                  {secili.kullanim > 0 ? ` · ${secili.kullanim} kez yendi` : ''}
+                </Text>
+              </View>
+              <Pressable onPress={temizle} hitSlop={8}>
+                <Ikon ad="close" boyut={18} renk={r.anaKoyu} />
+              </Pressable>
+            </Satir>
+            {secili.birim !== 'porsiyon' && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {[{ ad: '100 ' + secili.birim, gram: 100 }, ...porsiyonlariOku(secili)].map((p) => {
+                  const aktif = sayiOku(miktar) === p.gram;
+                  return (
+                    <Pressable
+                      key={p.ad}
+                      onPress={() => miktarDegisti(String(p.gram))}
+                      style={{
+                        borderRadius: 999,
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        backgroundColor: aktif ? r.ana : r.kart,
+                        borderWidth: 1,
+                        borderColor: aktif ? r.ana : r.cizgi,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: aktif ? r.anaYazi : r.metin }}>
+                        {p.ad}
+                        {p.ad.startsWith('100 ') ? '' : ` · ${p.gram} ${secili.birim}`}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
         )}
 
         {!secili && oneriler.length > 0 && (
@@ -183,8 +258,11 @@ export function ElleEkleFormu({ db, tarih, eklendi }: { db: SQLiteDatabase; tari
                       borderTopColor: r.cizgi,
                     })}
                   >
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: r.metin, fontWeight: '600' }}>{b.ad}</Text>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Satir style={{ gap: 6 }}>
+                        <Text style={{ color: r.metin, fontWeight: '600', flexShrink: 1 }}>{b.ad}</Text>
+                        <Rozet metin={kaynakBilgisi(b.kaynak, r).ad} renk={kaynakBilgisi(b.kaynak, r).renk} />
+                      </Satir>
                       <Text style={{ color: r.soluk, fontSize: 12 }}>
                         {Math.round(b.kcal)} kcal / {b.referans} {b.birim === 'porsiyon' ? 'porsiyon' : b.birim}
                         {b.sodyum != null ? ` · Na ${Math.round(b.sodyum)} mg` : ''}
@@ -194,6 +272,61 @@ export function ElleEkleFormu({ db, tarih, eklendi }: { db: SQLiteDatabase; tari
                   </Pressable>
                 ))}
               </View>
+            )}
+          </View>
+        )}
+
+        {!secili && yemek.trim().length >= 3 && (
+          <View style={{ gap: 6 }}>
+            {!webSonuc && (
+              <Pressable onPress={internetteAra} disabled={webAraniyor} hitSlop={6}>
+                <Satir style={{ paddingVertical: 4 }}>
+                  {webAraniyor ? <ActivityIndicator size="small" color={r.anaKoyu} /> : <Ikon ad="globe-outline" boyut={18} renk={r.anaKoyu} />}
+                  <Text style={{ color: r.anaKoyu, fontWeight: '700' }}>
+                    {oneriler.length ? 'Aradığın yok mu? ' : ''}İnternette ara: “{yemek.trim()}” (paketli ürünler)
+                  </Text>
+                </Satir>
+              </Pressable>
+            )}
+            {webHata && <Text style={{ color: r.kirmizi, fontSize: 13 }}>{webHata}</Text>}
+            {webSonuc && (
+              <>
+                <Etiket>İNTERNET · OPEN FOOD FACTS</Etiket>
+                {webSonuc.length === 0 && <Soluk>Sonuç bulunamadı; değerleri etiketten elle girebilirsin.</Soluk>}
+                <View style={{ borderRadius: 12, borderWidth: webSonuc.length ? 1 : 0, borderColor: r.cizgi, overflow: 'hidden' }}>
+                  {webSonuc.slice(0, 10).map((u, i) => (
+                    <Pressable
+                      key={u.kod}
+                      onPress={() => webSec(u)}
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        backgroundColor: pressed ? r.anaAcik : r.girdiArka,
+                        borderTopWidth: i ? 1 : 0,
+                        borderTopColor: r.cizgi,
+                      })}
+                    >
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={{ color: r.metin, fontWeight: '600' }}>{u.ad}</Text>
+                        <Text style={{ color: r.soluk, fontSize: 12 }}>
+                          {u.kcal} kcal / 100 g · P {u.protein ?? '?'} · K {u.karb ?? '?'} · Y {u.yag ?? '?'}
+                          {u.sodyum != null ? ` · Na ${u.sodyum} mg` : ''}
+                        </Text>
+                        {u.supheli && (
+                          <Text style={{ color: r.turuncu, fontSize: 11, fontWeight: '600' }}>
+                            ⚠️ Kalori ile makrolar tutarsız; etiketle kontrol et
+                          </Text>
+                        )}
+                      </View>
+                      <Ikon ad="add-circle" boyut={22} renk={r.ana} />
+                    </Pressable>
+                  ))}
+                </View>
+                <Soluk>Kullanıcıların girdiği veridir; paketteki etiketle karşılaştırman önerilir.</Soluk>
+              </>
             )}
           </View>
         )}

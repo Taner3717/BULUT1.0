@@ -1,0 +1,270 @@
+# Türkçe ad | kategori | USDA eşleşmesi: "=Tam açıklama", "#fdcId" ya da "@tarif:=Açıklama:oran;..." (oranlar ağırlıkça) | Türk porsiyonları (ad=gram;...)
+Muz|Meyve|=Bananas, raw|1 orta boy=118;1 küçük=101;1 büyük=136
+Elma|Meyve|=Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)|1 orta boy=182;1 küçük=149
+Armut|Meyve|=Pears, raw|1 orta boy=178
+Portakal|Meyve|=Oranges, raw, all commercial varieties|1 orta boy=131
+Mandalina|Meyve|=Tangerines, (mandarin oranges), raw|1 orta boy=88
+Greyfurt|Meyve|=Grapefruit, raw, pink and red, all areas|1/2 adet=123
+Limon|Meyve|=Lemons, raw, without peel|1 orta boy=58
+Çilek|Meyve|=Strawberries, raw|1 su bardağı=144;1 adet=12
+Üzüm|Meyve|=Grapes, red or green (European type, such as Thompson seedless), raw|1 su bardağı=151;1 salkım (küçük)=92
+Karpuz|Meyve|=Watermelon, raw|1 dilim=280;1 su bardağı küp=152
+Kavun|Meyve|=Melons, cantaloupe, raw|1 dilim=134
+Kiraz|Meyve|=Cherries, sweet, raw|1 su bardağı=138;10 adet=68
+Vişne|Meyve|=Cherries, sour, red, raw|1 su bardağı=155
+Şeftali|Meyve|=Peaches, yellow, raw|1 orta boy=150
+Kayısı|Meyve|=Apricots, raw|1 adet=35
+Kuru kayısı|Meyve|=Apricots, dried, sulfured, uncooked|1 adet=7;5 adet=35
+Erik|Meyve|=Plums, raw|1 adet=66
+Kivi|Meyve|=Kiwifruit, green, raw|1 adet=69
+Ananas|Meyve|=Pineapple, raw, all varieties|1 dilim=84
+Mango|Meyve|=Mangos, raw|1 adet=336
+Nar|Meyve|=Pomegranates, raw|1 orta boy=282;1/2 su bardağı tane=87
+İncir|Meyve|=Figs, raw|1 orta boy=50
+Kuru incir|Meyve|=Figs, dried, uncooked|1 adet=8
+Hurma|Meyve|=Dates, medjool|1 adet=24
+Kuru üzüm|Meyve|=Raisins, dark, seedless (Includes foods for USDA's Food Distribution Program)|1 yemek kaşığı=9
+Avokado|Meyve|=Avocados, raw, all commercial varieties|1/2 adet=100
+Yaban mersini|Meyve|=Blueberries, raw|1 su bardağı=148
+Ahududu|Meyve|=Raspberries, raw|1 su bardağı=123
+Böğürtlen|Meyve|=Blackberries, raw|1 su bardağı=144
+Ayva|Meyve|=Quinces, raw|1 adet=92
+Hindistan cevizi (taze)|Meyve|=Nuts, coconut meat, raw|1 parça=45
+Domates|Sebze|=Tomatoes, red, ripe, raw, year round average|1 orta boy=123;1 küçük=91;1 büyük=182
+Çeri domates|Sebze|#321360|1 adet=17
+Salatalık|Sebze|=Cucumber, with peel, raw|1 orta boy=200;1 dilim=7
+Salatalık (soyulmuş)|Sebze|=Cucumber, peeled, raw|1 orta boy=150
+Patates (çiğ)|Sebze|=Potatoes, flesh and skin, raw|1 orta boy=213;1 küçük=170
+Patates (haşlanmış)|Sebze|=Potatoes, boiled, cooked without skin, flesh, without salt|1 orta boy=167
+Patates (fırında)|Sebze|=Potatoes, baked, flesh and skin, without salt|1 orta boy=173
+Patates kızartması|Sebze|=Potatoes, french fried, all types, salt added in processing, frozen, home-prepared, oven heated|1 porsiyon (orta)=117
+Tatlı patates|Sebze|=Sweet potato, raw, unprepared (Includes foods for USDA's Food Distribution Program)|1 orta boy=130
+Havuç|Sebze|=Carrots, raw|1 orta boy=61
+Soğan|Sebze|=Onions, raw|1 orta boy=110
+Yeşil soğan|Sebze|=Onions, spring or scallions (includes tops and bulb), raw|1 adet=15
+Sarımsak|Sebze|=Garlic, raw|1 diş=3
+Kırmızı biber (dolmalık)|Sebze|=Peppers, sweet, red, raw|1 orta boy=119
+Yeşil biber|Sebze|=Peppers, sweet, green, raw|1 orta boy=119;1 sivri biber=15
+Acı biber|Sebze|=Peppers, hot chili, green, raw|1 adet=45
+Patlıcan|Sebze|=Eggplant, raw|1 orta boy=458
+Kabak|Sebze|=Squash, summer, zucchini, includes skin, raw|1 orta boy=196
+Ispanak|Sebze|=Spinach, raw|1 su bardağı=30
+Ispanak (pişmiş)|Sebze|=Spinach, cooked, boiled, drained, without salt|1 su bardağı=180
+Brokoli|Sebze|=Broccoli, raw|1 su bardağı=91
+Brokoli (haşlanmış)|Sebze|=Broccoli, cooked, boiled, drained, without salt|1 su bardağı=156
+Karnabahar|Sebze|=Cauliflower, raw|1 su bardağı=107
+Lahana|Sebze|=Cabbage, raw|1 su bardağı=89
+Kırmızı lahana|Sebze|=Cabbage, red, raw|1 su bardağı=89
+Marul|Sebze|=Lettuce, green leaf, raw|1 yaprak=8;1 su bardağı=36
+Göbek marul|Sebze|=Lettuce, iceberg (includes crisphead types), raw|1 su bardağı=72
+Roka|Sebze|=Arugula, raw|1 su bardağı=20
+Maydanoz|Sebze|=Parsley, fresh|1 yemek kaşığı=4;1 demet=60
+Dereotu|Sebze|=Dill weed, fresh|1 demet=20
+Nane (taze)|Sebze|=Spearmint, fresh|1 yemek kaşığı=3
+Mantar|Sebze|=Mushrooms, white, raw|1 su bardağı=70;1 adet=18
+Bezelye|Sebze|=Peas, green, raw|1 su bardağı=145
+Taze fasulye|Sebze|=Beans, snap, green, raw|1 su bardağı=100
+Mısır (haşlanmış)|Sebze|=Corn, sweet, yellow, cooked, boiled, drained, without salt|1 koçan=103
+Kereviz (sap)|Sebze|=Celery, raw|1 sap=40
+Pancar|Sebze|=Beets, raw|1 adet=82
+Turp|Sebze|=Radishes, raw|1 adet=5
+Pırasa|Sebze|=Leeks, (bulb and lower leaf-portion), raw|1 adet=89
+Bamya|Sebze|=Okra, raw|1 su bardağı=100
+Enginar|Sebze|=Artichokes, (globe or french), raw|1 orta boy=128
+Kuşkonmaz|Sebze|=Asparagus, raw|1 adet=16
+Mercimek (kırmızı, pişmiş)|Baklagil|=Lentils, mature seeds, cooked, boiled, without salt|1 su bardağı=198;1 yemek kaşığı=12
+Mercimek (kuru)|Baklagil|=Lentils, raw|1 su bardağı=192
+Nohut (haşlanmış)|Baklagil|=Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt|1 su bardağı=164;1 yemek kaşığı=12
+Nohut (kuru)|Baklagil|=Chickpeas (garbanzo beans, bengal gram), mature seeds, raw|1 su bardağı=200
+Kuru fasulye (haşlanmış)|Baklagil|=Beans, white, mature seeds, cooked, boiled, without salt|1 su bardağı=179
+Barbunya (haşlanmış)|Baklagil|=Beans, cranberry (roman), mature seeds, cooked, boiled, without salt|1 su bardağı=177
+Börülce (haşlanmış)|Baklagil|=Cowpeas, common (blackeyes, crowder, southern), mature seeds, cooked, boiled, without salt|1 su bardağı=172
+Bakla (taze)|Baklagil|=Broadbeans (fava beans), mature seeds, raw|1 su bardağı=150
+Soya fasulyesi (haşlanmış)|Baklagil|=Soybeans, mature cooked, boiled, without salt|1 su bardağı=172
+Edamame|Baklagil|=Edamame, frozen, prepared|1 su bardağı=155
+Humus|Baklagil|=Hummus, commercial|1 yemek kaşığı=15;2 yemek kaşığı=30
+Tofu|Baklagil|=Tofu, raw, firm, prepared with calcium sulfate|1 dilim=84
+Pirinç (pişmiş, beyaz)|Tahıl|=Rice, white, long-grain, regular, enriched, cooked|1 su bardağı=158;1 porsiyon (pilav)=150;1 yemek kaşığı=12
+Pirinç (çiğ, beyaz)|Tahıl|=Rice, white, long-grain, regular, raw, enriched|1 su bardağı=185
+Esmer pirinç (pişmiş)|Tahıl|=Rice, brown, long-grain, cooked (Includes foods for USDA's Food Distribution Program)|1 su bardağı=202
+Bulgur (pişmiş)|Tahıl|=Bulgur, cooked|1 su bardağı=182;1 porsiyon (pilav)=150
+Bulgur (çiğ)|Tahıl|=Bulgur, dry|1 su bardağı=140
+Makarna (pişmiş)|Tahıl|=Pasta, cooked, enriched, without added salt|1 su bardağı=140;1 porsiyon=200
+Makarna (çiğ)|Tahıl|=Pasta, dry, enriched|1 porsiyon=100
+Tam buğday makarna (pişmiş)|Tahıl|=Pasta, whole-wheat, cooked (Includes foods for USDA's Food Distribution Program)|1 su bardağı=140
+Erişte (pişmiş)|Tahıl|=Noodles, egg, enriched, cooked|1 su bardağı=160
+Kuskus (pişmiş)|Tahıl|=Couscous, cooked|1 su bardağı=157
+Yulaf ezmesi|Tahıl|=Cereals, oats, regular and quick, not fortified, dry|1 yemek kaşığı=5;1/2 su bardağı=40
+Yulaf lapası (suyla)|Tahıl|=Cereals, oats, regular and quick, unenriched, cooked with water (includes boiling and microwaving), without salt|1 kase=234
+Granola|Tahıl|=Cereals ready-to-eat, granola, homemade|1/2 su bardağı=61
+Mısır gevreği|Tahıl|=Cereals ready-to-eat, RALSTON Corn Flakes|1 kase=28
+Kinoa (pişmiş)|Tahıl|=Quinoa, cooked|1 su bardağı=185
+Karabuğday (pişmiş)|Tahıl|=Buckwheat groats, roasted, cooked|1 su bardağı=168
+Beyaz ekmek|Ekmek|=Bread, white, commercially prepared (includes soft bread crumbs)|1 dilim=25;1 dilim (kalın)=35
+Tam buğday ekmeği|Ekmek|=Bread, whole-wheat, commercially prepared|1 dilim=28
+Çavdar ekmeği|Ekmek|=Bread, rye|1 dilim=32
+Kepekli ekmek|Ekmek|=Bread, wheat|1 dilim=36
+Lavaş / tortilla|Ekmek|=Tortillas, ready-to-bake or -fry, flour, refrigerated|1 adet (büyük)=70;1 adet (orta)=45
+Pide ekmeği|Ekmek|=Bread, pita, white, enriched|1 adet=60
+Tam buğday pita|Ekmek|=Bread, pita, whole-wheat|1 adet=64
+Bagel|Ekmek|=Bagels, plain, enriched, with calcium propionate (includes onion, poppy, sesame)|1 adet=105
+Galeta / kraker|Ekmek|=Crackers, standard snack-type, regular|1 adet=3;5 adet=16
+Pirinç patlağı|Ekmek|=Snacks, rice cakes, brown rice, plain, unsalted|1 adet=9
+Un (beyaz)|Tahıl|=Wheat flour, white, all-purpose, enriched, bleached|1 yemek kaşığı=8;1 su bardağı=125
+Tam buğday unu|Tahıl|=Flour, whole wheat, unenriched|1 su bardağı=120
+İnek sütü (tam yağlı)|Süt ürünleri|=Milk, whole, 3.25% milkfat, with added vitamin D|1 su bardağı=206;100 ml=103
+İnek sütü (yarım yağlı)|Süt ürünleri|=Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D|1 su bardağı=206;100 ml=103
+İnek sütü (yağsız)|Süt ürünleri|=Milk, nonfat, fluid, with added vitamin A and vitamin D (fat free or skim)|1 su bardağı=206;100 ml=103
+Laktozsuz süt|Süt ürünleri|=Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D|1 su bardağı=206
+Yoğurt (tam yağlı)|Süt ürünleri|=Yogurt, plain, whole milk|1 kase=200;1 yemek kaşığı=15
+Yoğurt (az yağlı)|Süt ürünleri|=Yogurt, plain, low fat|1 kase=200
+Süzme yoğurt|Süt ürünleri|=Yogurt, Greek, plain, whole milk|1 kase=170;1 yemek kaşığı=20
+Süzme yoğurt (yağsız)|Süt ürünleri|=Yogurt, Greek, plain, nonfat|1 kase=170
+Ayran (ev yapımı, tarif hesabı)|Süt ürünleri|@tarif:=Yogurt, plain, whole milk:0.5;=Beverages, water, tap, drinking:0.5;=Salt, table:0.005|1 su bardağı=200;1 kutu=300
+Kefir|Süt ürünleri|=Kefir, lowfat, plain, LIFEWAY|1 su bardağı=200
+Beyaz peynir|Süt ürünleri|=Cheese, feta|1 dilim (kibrit kutusu)=30;1 yemek kaşığı=15
+Kaşar peyniri|Süt ürünleri|=Cheese, cheddar (Includes foods for USDA's Food Distribution Program)|1 dilim=20;1 ince dilim=15
+Lor peyniri|Süt ürünleri|=Cheese, cottage, lowfat, 1% milkfat|1 yemek kaşığı=15;1/2 su bardağı=113
+Lor peyniri (tam yağlı)|Süt ürünleri|=Cheese, cottage, creamed, large or small curd|1/2 su bardağı=105
+Labne / krem peynir|Süt ürünleri|=Cheese, cream|1 yemek kaşığı=15
+Mozzarella|Süt ürünleri|=Cheese, mozzarella, whole milk|1 dilim=28
+Parmesan|Süt ürünleri|=Cheese, parmesan, grated|1 yemek kaşığı=5
+Tereyağı|Süt ürünleri|=Butter, salted|1 tatlı kaşığı=5;1 yemek kaşığı=14
+Tereyağı (tuzsuz)|Süt ürünleri|=Butter, without salt|1 yemek kaşığı=14
+Krema (sıvı)|Süt ürünleri|=Cream, fluid, heavy whipping|1 yemek kaşığı=15
+Peynir altı suyu tozu (whey protein)|Süt ürünleri|#173180|1 ölçek=30
+Yumurta (bütün, çiğ)|Yumurta|=Egg, whole, raw, fresh|1 orta boy=50;1 büyük=60;1 küçük=40
+Yumurta (haşlanmış)|Yumurta|=Egg, whole, cooked, hard-boiled|1 orta boy=50;1 büyük=60
+Yumurta (sahanda, yağlı)|Yumurta|=Egg, whole, cooked, fried|1 adet=46
+Omlet / scrambled|Yumurta|=Egg, whole, cooked, scrambled|2 yumurtalık=122
+Yumurta beyazı|Yumurta|=Egg, white, raw, fresh|1 büyük=33;1 orta=30
+Yumurta sarısı|Yumurta|=Egg, yolk, raw, fresh|1 büyük=17;1 orta=15
+Tavuk göğsü (çiğ, derisiz)|Et & Tavuk|=Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw|1 adet=200
+Tavuk göğsü (ızgara/fırın, derisiz)|Et & Tavuk|=Chicken, broilers or fryers, breast, meat only, cooked, roasted|1 porsiyon=120;1 adet=172
+Tavuk but (pişmiş, derisiz)|Et & Tavuk|=Chicken, broilers or fryers, thigh, meat only, cooked, roasted|1 adet=52
+Tavuk but (pişmiş, derili)|Et & Tavuk|=Chicken, broilers or fryers, thigh, meat and skin, cooked, roasted|1 adet=62
+Tavuk baget (pişmiş, derisiz)|Et & Tavuk|=Chicken, broilers or fryers, dark meat, drumstick, meat only, cooked, roasted|1 adet=44
+Tavuk kanat (pişmiş)|Et & Tavuk|=Chicken, broilers or fryers, wing, meat and skin, cooked, roasted|1 adet=34
+Hindi göğsü (pişmiş)|Et & Tavuk|=Turkey, whole, breast, meat only, cooked, roasted|1 porsiyon=100
+Hindi füme|Et & Tavuk|=Turkey breast, sliced, prepackaged|1 dilim=28
+Dana kıyma (%20 yağlı, pişmiş)|Et & Tavuk|=Beef, ground, 80% lean meat / 20% fat, crumbles, cooked, pan-browned|1 porsiyon=100
+Dana kıyma (%10 yağlı, pişmiş)|Et & Tavuk|=Beef, ground, 90% lean meat / 10% fat, crumbles, cooked, pan-browned|1 porsiyon=100
+Dana kıyma (%20 yağlı, çiğ)|Et & Tavuk|=Beef, ground, 80% lean meat / 20% fat, raw|1 porsiyon=100
+Dana kıyma (%10 yağlı, çiğ)|Et & Tavuk|=Beef, ground, 90% lean meat / 10% fat, raw|1 porsiyon=100
+Dana bonfile (ızgara)|Et & Tavuk|=Beef, tenderloin, steak, separable lean only, trimmed to 1/8" fat, all grades, cooked, broiled|1 porsiyon=150
+Dana antrikot (ızgara)|Et & Tavuk|#169557|1 porsiyon=150
+Dana kuşbaşı (haşlanmış)|Et & Tavuk|#170213|1 porsiyon=100
+Kuzu eti (pişmiş)|Et & Tavuk|#174312|1 porsiyon=100
+Kuzu pirzola (ızgara)|Et & Tavuk|#172489|1 adet=50
+Dana ciğer (pişmiş)|Et & Tavuk|=Beef, variety meats and by-products, liver, cooked, pan-fried|1 porsiyon=100
+Sucuk|Et & Tavuk|=Sausage, Italian, pork, mild, cooked, pan-fried|1 dilim=10;5 dilim=50
+Salam|Et & Tavuk|=Salami, Italian, pork|1 dilim=10
+Sosis|Et & Tavuk|=Frankfurter, beef, unheated|1 adet=45
+Pastırma|Et & Tavuk|=Beef, cured, dried|1 dilim=8
+Somon (pişmiş)|Balık|=Fish, salmon, Atlantic, farmed, cooked, dry heat|1 porsiyon=150;1 fileto=180
+Somon (çiğ)|Balık|=Fish, salmon, Atlantic, farmed, raw|1 porsiyon=150
+Ton balığı konserve (suda)|Balık|=Fish, tuna, light, canned in water, drained solids (Includes foods for USDA's Food Distribution Program)|1 kutu (süzülmüş)=120;1 küçük kutu=75
+Ton balığı konserve (yağda)|Balık|=Fish, tuna, light, canned in oil, drained solids|1 kutu (süzülmüş)=120
+Hamsi|Balık|=Fish, anchovy, european, raw|1 porsiyon=150
+Uskumru (pişmiş)|Balık|=Fish, mackerel, Atlantic, cooked, dry heat|1 porsiyon=150
+Levrek (pişmiş)|Balık|=Fish, sea bass, mixed species, cooked, dry heat|1 adet=200
+Çipura (pişmiş)|Balık|=Fish, snapper, mixed species, cooked, dry heat|1 adet=200
+Alabalık (pişmiş)|Balık|=Fish, trout, rainbow, farmed, cooked, dry heat|1 adet=150
+Sardalya konserve|Balık|=Fish, sardine, Atlantic, canned in oil, drained solids with bone|1 kutu=92
+Karides (pişmiş)|Balık|=Crustaceans, shrimp, cooked|1 porsiyon=100
+Midye (pişmiş)|Balık|=Mollusks, mussel, blue, cooked, moist heat|1 adet=10
+Kalamar (kızartma)|Balık|=Mollusks, squid, mixed species, cooked, fried|1 porsiyon=150
+Ceviz|Kuruyemiş|=Nuts, walnuts, english|1 adet (bütün)=5;1 avuç=28
+Badem|Kuruyemiş|=Nuts, almonds|1 adet=1.2;1 avuç=28
+Fındık|Kuruyemiş|=Nuts, hazelnuts or filberts|1 adet=1.4;1 avuç=28
+Antep fıstığı|Kuruyemiş|=Nuts, pistachio nuts, dry roasted, with salt added|1 avuç=28
+Kaju|Kuruyemiş|=Nuts, cashew nuts, raw|1 avuç=28
+Yer fıstığı (kavrulmuş)|Kuruyemiş|=Peanuts, all types, dry-roasted, with salt|1 avuç=28
+Fıstık ezmesi|Kuruyemiş|=Peanut butter, smooth style, without salt|1 yemek kaşığı=16;1 tatlı kaşığı=8
+Tahin|Kuruyemiş|=Seeds, sesame butter, tahini, from roasted and toasted kernels (most common type)|1 yemek kaşığı=15
+Ay çekirdeği (iç)|Kuruyemiş|=Seeds, sunflower seed kernels, dry roasted, with salt added|1 avuç=28
+Kabak çekirdeği (iç)|Kuruyemiş|=Seeds, pumpkin and squash seed kernels, dried|1 avuç=28
+Chia tohumu|Kuruyemiş|=Seeds, chia seeds, dried|1 yemek kaşığı=12
+Keten tohumu|Kuruyemiş|=Seeds, flaxseed|1 yemek kaşığı=10
+Susam|Kuruyemiş|=Seeds, sesame seeds, whole, dried|1 yemek kaşığı=9
+Zeytinyağı|Yağlar|=Oil, olive, salad or cooking|1 yemek kaşığı=13.5;1 tatlı kaşığı=4.5
+Ayçiçek yağı|Yağlar|=Oil, sunflower, linoleic, (approx. 65%)|1 yemek kaşığı=13.6
+Mısırözü yağı|Yağlar|=Oil, corn, industrial and retail, all purpose salad or cooking|1 yemek kaşığı=13.6
+Fındık yağı|Yağlar|=Oil, hazelnut|1 yemek kaşığı=13.6
+Hindistan cevizi yağı|Yağlar|=Oil, coconut|1 yemek kaşığı=13.6
+Margarin|Yağlar|=Margarine, regular, 80% fat, composite, stick, with salt|1 yemek kaşığı=14
+Mayonez|Yağlar|=Salad dressing, mayonnaise, regular|1 yemek kaşığı=14
+Siyah zeytin|Yağlar|=Olives, ripe, canned (small-extra large)|1 adet=4;5 adet=20
+Yeşil zeytin|Yağlar|=Olives, pickled, canned or bottled, green|1 adet=3;5 adet=15
+Bal|Tatlı|=Honey|1 tatlı kaşığı=7;1 yemek kaşığı=21
+Şeker (toz)|Tatlı|=Sugars, granulated|1 küp=3;1 tatlı kaşığı=4;1 yemek kaşığı=12.5
+Esmer şeker|Tatlı|=Sugars, brown|1 tatlı kaşığı=4.6
+Pekmez / melas|Tatlı|=Molasses|1 yemek kaşığı=20
+Reçel|Tatlı|=Jams and preserves|1 yemek kaşığı=20;1 tatlı kaşığı=7
+Bitter çikolata (%70-85)|Tatlı|=Chocolate, dark, 70-85% cacao solids|1 kare=10;1 tablet=80
+Sütlü çikolata|Tatlı|=Candies, milk chocolate|1 kare=6;1 tablet=80
+Kakao tozu|Tatlı|=Cocoa, dry powder, unsweetened|1 yemek kaşığı=5
+Fındık kreması (Nutella vb.)|Tatlı|=Chocolate-flavored hazelnut spread|1 yemek kaşığı=19
+Dondurma (vanilyalı)|Tatlı|=Ice creams, vanilla|1 top=66
+Bisküvi (sade)|Tatlı|=Cookies, butter, commercially prepared, enriched|1 adet=5
+Kek (sade)|Tatlı|=Cake, pound|1 dilim=60
+Kruvasan|Tatlı|=Croissants, butter|1 adet=57
+Baklava|Tatlı|=Baklava|1 dilim=78;1 kare=40
+Sütlaç / puding|Tatlı|=Pudding, rice|1 kase=150
+Muhallebi|Tatlı|=Puddings, vanilla, ready-to-eat|1 kase=150
+Lokum|Tatlı|#167989|1 adet=10
+Cips (patates)|Atıştırmalık|=Snacks, potato chips, plain, salted|1 avuç=28;1 küçük paket=40
+Patlamış mısır|Atıştırmalık|=Snacks, popcorn, air-popped|1 su bardağı=8
+Protein bar|Atıştırmalık|#2708127|1 adet=50
+Su|İçecek|=Beverages, water, tap, drinking|1 su bardağı=200
+Çay (şekersiz)|İçecek|=Beverages, tea, black, brewed, prepared with tap water|1 çay bardağı=100;1 kupa=240
+Türk kahvesi (şekersiz)|İçecek|=Beverages, coffee, brewed, espresso, restaurant-prepared|1 fincan=65
+Filtre kahve|İçecek|=Beverages, coffee, brewed, prepared with tap water|1 kupa=240
+Portakal suyu (taze)|İçecek|=Orange juice, raw (Includes foods for USDA's Food Distribution Program)|1 su bardağı=200
+Elma suyu|İçecek|=Apple juice, canned or bottled, unsweetened, without added ascorbic acid|1 su bardağı=200
+Kola|İçecek|=Beverages, carbonated, cola, regular|1 kutu (330 ml)=340
+Kola (şekersiz)|İçecek|#174850|1 kutu (330 ml)=340
+Bira|İçecek|=Alcoholic beverage, beer, regular, all|1 kutu (330 ml)=330;1 bardak (500 ml)=500
+Şarap (kırmızı)|İçecek|=Alcoholic beverage, wine, table, red|1 kadeh=150
+Rakı (≈ %40-45 alkol)|İçecek|=Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 80 proof|1 tek=50
+Enerji içeceği|İçecek|=Beverages, Energy drink, RED BULL|1 kutu=260
+Sporcu içeceği|İçecek|=Sports drink (Powerade)|1 şişe=500
+Ketçap|Sos|=Catsup|1 yemek kaşığı=17;1 tatlı kaşığı=6
+Hardal|Sos|=Mustard, prepared, yellow|1 tatlı kaşığı=5
+Domates salçası|Sos|#170459|1 yemek kaşığı=16
+Soya sosu|Sos|=Soy sauce made from soy and wheat (shoyu)|1 yemek kaşığı=16
+Sirke|Sos|=Vinegar, distilled|1 yemek kaşığı=15
+Limon suyu|Sos|=Lemon juice, raw|1 yemek kaşığı=15
+Tuz|Sos|=Salt, table|1 çay kaşığı=6;1 tutam=0.4
+Turşu (salatalık)|Sos|=Pickles, cucumber, dill or kosher dill|1 adet=35
+Barbekü sos|Sos|=Sauce, barbecue|1 yemek kaşığı=17
+Mercimek çorbası|Yemek|=Soup, lentil|1 kase=250
+Domates çorbası|Yemek|=Soup, tomato|1 kase=250
+Tavuk suyu çorba (şehriyeli)|Yemek|=Soup, chicken noodle|1 kase=250
+Sebze çorbası|Yemek|=Soup, vegetable|1 kase=250
+Pirinç pilavı|Yemek|=Rice pilaf|1 porsiyon=150;1 su bardağı=158
+Nohut yemeği|Yemek|=Chickpeas, from canned, fat added|1 kase=250
+Yaprak sarma|Yemek|=Grape leaves stuffed with rice|1 adet=20;5 adet=100
+Biber dolma|Yemek|=Stuffed pepper, with meat|1 adet=170
+Pizza (karışık)|Yemek|#2708651|1 dilim=110
+Döner (tavuk, dürüm)|Yemek|=Gyro sandwich|1 adet=250
+Köfte (ızgara)|Yemek|=Beef, ground, 80% lean meat / 20% fat, patty, cooked, pan-broiled|1 adet=30;1 porsiyon (6 adet)=180
+Şiş kebap|Yemek|=Beef shish kabob with vegetables, excluding potatoes|1 şiş=100
+Tavuk şiş|Yemek|=Chicken or turkey shish kabob with vegetables, excluding potatoes|1 şiş=100
+Menemen|Yemek|=Egg omelet or scrambled egg, with tomatoes, fat added|1 porsiyon=200
+İmam bayıldı / patlıcan yemeği|Yemek|=Eggplant, cooked, fat added|1 porsiyon=200
+Taze fasulye (zeytinyağlı)|Yemek|=Green beans, fresh, cooked, fat added, NS as to fat type|1 porsiyon=200
+Ispanak yemeği|Yemek|=Spinach, fresh, cooked, fat added, NS as to fat type|1 porsiyon=200
+Patates püresi|Yemek|=Potato, mashed, from fresh, made with milk|1 kase=210
+Çoban salatası|Yemek|#2709822|1 kase=150
+Cacık / tzatziki|Yemek|=Tzatziki dip|1 kase=150;1 yemek kaşığı=15
+Falafel|Yemek|=Falafel|1 adet=17
+Börek (peynirli)|Yemek|=Spanakopita|1 dilim=100
+Poğaça|Yemek|=Biscuit, cheese|1 adet=60
+Mantı|Yemek|=Ravioli, meat-filled, with tomato sauce or meat sauce|1 porsiyon=250
+Hamburger|Yemek|=Hamburger, from fast food, 1 medium patty|1 adet=110
+Tost (kaşarlı)|Yemek|=Grilled cheese sandwich, cheddar cheese, on white bread|1 adet=120
+Tavuk nuggets|Yemek|=Chicken nuggets, from fast food|1 adet=16
+Izgara tavuk kanat (soslu)|Yemek|=Chicken wing, grilled with sauce|1 adet=32
+Omlet (peynirli)|Yemek|=Egg omelet or scrambled egg, with cheese and tomatoes, fat added|1 porsiyon=130
+

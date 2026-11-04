@@ -15,7 +15,7 @@ Tasarım: yeşil palet, otomatik karanlık mod (Profil → Görünüm'den Açık
 | **Su** | Hızlı ekleme (+200/+250/+500), kiloya göre hedef (35 ml/kg), zamanlı hatırlatıcı bildirimleri; bildirimdeki “+250 ml içtim” butonu suyu direkt kaydeder |
 | **Profil** | Boy, yaş, cinsiyet, aktivite seviyesi, hedef (kilo ver / koru / al) |
 | **Besin değerleri** | Kalorinin altında FatSecret tarzı tablo: sodyum (≤ 2000 mg) ve potasyum (≥ 3500 mg) öne çıkar; lif, şeker, doymuş yağ, kolesterol. Bilinmeyen değerler `*` ile işaretlenir |
-| **Yiyeceklerim** | Elle eklerken yazdıkça arama, sık yediklerin üstte; seçince gramla bütün değerler dolar. Yeni girilen yiyecek listeye kaydedilir |
+| **Yiyecek arama** | 268 doğrulanmış yiyecek (USDA FoodData Central, Türkçe adlar, Türk porsiyonları) uygulamayla gelir; Türkçe karaktersiz de arar ("cig kofte"). Seçince gram yaz ya da porsiyon seç (ör. "1 orta boy · 118 g"), değerler dolar. Bulunamazsa **İnternette ara** ile Open Food Facts'te paketli ürünler (Eti, Ülker, İçim…). Kendi girdiğin yiyecekler de listeye eklenir |
 | **📷 Fotoğrafla ekle** | Yemek fotoğrafı → her yiyecek için tahmini gram, kalori ve makro → gramı düzelt (değerler orantılı güncellenir) → öğüne kaydet |
 
 Hesaplamalar: `src/lib/calc.ts` (Mifflin-St Jeor BMR, aktivite katsayılı TDEE, US Navy yağ oranı,
@@ -81,6 +81,19 @@ python3 scripts/fatsecret_aktar.py diary.txt src/data/kisisel/fatsecret.json
 Uygulama açılışta bu dosyadaki yiyecekleri **Yiyeceklerim**'e, günlük kayıtlarını ilgili günlere bir kez aktarır.
 Betik her günün kalori toplamını PDF'teki toplamla karşılaştırır. `src/data/kisisel/fatsecret.json`
 kişisel veridir; depo herkese açıksa commit etme.
+
+## Besin veritabanı
+
+Kaynaklar ve doğrulama: [`docs/besin-dogrulama.md`](docs/besin-dogrulama.md)
+
+| Kaynak | Ne için | Lisans |
+|---|---|---|
+| USDA FoodData Central (Foundation, SR Legacy, FNDDS) | Genel yiyecekler ve yemekler, uygulamaya gömülü | Kamu malı |
+| Open Food Facts | Paketli ürünler, internette arama (yalnız telefonda) | ODbL, kullanıcı katkılı |
+
+Listeyi güncellemek: `scripts/besin_listesi.tsv`'ye satır ekle (Türkçe ad, kategori, USDA eşleşmesi, porsiyonlar), sonra
+`scripts/usda_dizin.py` → `scripts/besin_eslestir.py <dizin.json> src/data/... ` → `scripts/besin_dogrula.py` çalıştır
+ve `src/data/besinler-usda.json`'daki `surum`'u değiştir (uygulama yeni sürümü bir kez yükler).
 
 ## Klasör yapısı
 
