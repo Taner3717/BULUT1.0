@@ -33,7 +33,7 @@ async function yukle(db: SQLiteDatabase) {
 }
 
 export default function SuEkrani() {
-  const { veri, yenile, db } = useVeri(useCallback(yukle, []));
+  const { veri, yenile, db } = useVeri(useCallback((d: SQLiteDatabase) => yukle(d), []));
   const [ozel, setOzel] = useState('');
   const [ayar, setAyar] = useState<SuAyari>(VARSAYILAN_SU_AYARI);
   const [hedefMetin, setHedefMetin] = useState('');

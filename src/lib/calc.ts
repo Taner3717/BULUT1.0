@@ -126,3 +126,19 @@ export function dkMetin(dk: number): string {
   const m = Math.round(dk % 60);
   return m === 0 ? `${h} sa` : `${h} sa ${m} dk`;
 }
+
+export type BesinKalemi = { ad: string; gram: number; kcal: number; protein: number; karb: number; yag: number };
+
+/** Tahmin edilen porsiyonun gramı değişince kalori ve makroları orantılı ölçekler. */
+export function porsiyonOlcekle(taban: BesinKalemi, yeniGram: number): BesinKalemi {
+  if (!(taban.gram > 0) || !(yeniGram >= 0)) return { ...taban, gram: yeniGram };
+  const k = yeniGram / taban.gram;
+  return {
+    ad: taban.ad,
+    gram: yeniGram,
+    kcal: Math.round(taban.kcal * k),
+    protein: yuvarla(taban.protein * k),
+    karb: yuvarla(taban.karb * k),
+    yag: yuvarla(taban.yag * k),
+  };
+}

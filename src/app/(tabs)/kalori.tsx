@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { router } from 'expo-router';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { Alert, Text } from 'react-native';
 import {
@@ -11,7 +12,6 @@ import {
   ListeSatiri,
   Satir,
   Secenekler,
-  Soluk,
   TarihGezgini,
   renk,
 } from '../../components/ui';
@@ -118,7 +118,9 @@ export default function KaloriEkrani() {
         </Kart>
       )}
 
-      <Kart baslik="Yemek ekle">
+      <Buton baslik="📷 Fotoğrafla ekle" bas={() => router.push({ pathname: '/foto', params: { tarih } })} />
+
+      <Kart baslik="Elle ekle">
         <Secenekler secenekler={OGUNLER} secili={ogun} sec={setOgun} />
         <Satir>
           <Alan etiket="Yemek" deger={yemek} degistir={setYemek} ipucu="Tavuk göğsü" klavye="default" genis={2} />
@@ -131,7 +133,6 @@ export default function KaloriEkrani() {
           <Alan etiket="Yağ" deger={yag} degistir={setYag} ipucu="g" />
         </Satir>
         <Buton baslik="Ekle" bas={ekle} />
-        <Soluk>📷 Fotoğrafla otomatik kalori hesabı bir sonraki adımda eklenecek.</Soluk>
       </Kart>
 
       {veri &&

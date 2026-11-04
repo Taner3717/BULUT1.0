@@ -77,7 +77,7 @@ export default function ProfilEkrani() {
 
       <Kart baslik="Hesaplanan">
         {kilo == null ? (
-          <Soluk>Hesaplama için "Kilo & Ölçü" sekmesinden kilonu gir.</Soluk>
+          <Soluk>Hesaplama için “Kilo & Ölçü” sekmesinden kilonu gir.</Soluk>
         ) : (
           <Satir>
             <Deger etiket="BMR" deger={h.bmr ? `${h.bmr}` : '—'} alt="kcal" />

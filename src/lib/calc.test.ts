@@ -53,3 +53,10 @@ test('uyku süresi gece yarısını geçer', () => {
   assert.equal(uykuSuresiDk('01:00', '08:15'), 435);
   assert.equal(uykuSuresiDk('25:00', '07:00'), null);
 });
+
+test('porsiyon ölçekleme', async () => {
+  const { porsiyonOlcekle } = await import('./calc.ts');
+  const pilav = { ad: 'Pilav', gram: 200, kcal: 260, protein: 5, karb: 56, yag: 2 };
+  assert.deepEqual(porsiyonOlcekle(pilav, 100), { ad: 'Pilav', gram: 100, kcal: 130, protein: 2.5, karb: 28, yag: 1 });
+  assert.equal(porsiyonOlcekle({ ...pilav, gram: 0 }, 50).kcal, 260);
+});

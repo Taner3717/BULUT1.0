@@ -35,7 +35,15 @@
       ],
       "expo-status-bar",
       "expo-sqlite",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Bulut, öğün fotoğraflarından kalori hesaplamak için fotoğraflarına erişir.",
+          "cameraPermission": "Bulut, öğün fotoğrafı çekip kalori hesaplamak için kameraya erişir.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "scheme": "bulut",
     "experiments": {

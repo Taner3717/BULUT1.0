@@ -32,7 +32,7 @@ async function yukle(db: SQLiteDatabase) {
 }
 
 export default function Bugun() {
-  const { veri, yenile, db } = useVeri(useCallback(yukle, []));
+  const { veri, yenile, db } = useVeri(useCallback((d: SQLiteDatabase) => yukle(d), []));
   if (!veri) return <Ekran>{null}</Ekran>;
   const { profil, son, toplam, su, sonUyku, hedef } = veri;
 

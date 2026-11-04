@@ -44,6 +44,7 @@ export default function KokDuzen() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="profil" options={{ title: 'Profil', presentation: 'modal' }} />
+        <Stack.Screen name="foto" options={{ title: 'Fotoğrafla ekle', presentation: 'modal' }} />
       </Stack>
     </SQLiteProvider>
   );

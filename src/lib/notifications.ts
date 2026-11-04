@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 export const SU_KATEGORI = 'su_hatirlatici';
@@ -39,7 +40,7 @@ export async function bildirimIzniIste(): Promise<boolean> {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(KANAL, {
       name: 'Su hatırlatıcısı',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: AndroidImportance.DEFAULT,
     });
   }
   const mevcut = await Notifications.getPermissionsAsync();

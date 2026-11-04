@@ -27,7 +27,7 @@ async function yukle(db: SQLiteDatabase) {
 }
 
 export default function OlcumEkrani() {
-  const { veri, yenile, db } = useVeri(useCallback(yukle, []));
+  const { veri, yenile, db } = useVeri(useCallback((d: SQLiteDatabase) => yukle(d), []));
   const [form, setForm] = useState(BOS);
 
   async function kaydet() {

@@ -1,0 +1,5 @@
+# Yalnızca fonksiyon ayarları; projeyi `supabase link` ile bağladıktan sonra
+# `supabase db push` ve `supabase functions deploy yemek-analiz` kullan.
+
+[functions.yemek-analiz]
+verify_jwt = true

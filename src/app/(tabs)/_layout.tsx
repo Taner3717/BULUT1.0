@@ -3,9 +3,9 @@ import { Text } from 'react-native';
 import { renk } from '../../components/ui';
 
 function ikon(emoji: string) {
-  return ({ focused }: { focused: boolean }) => (
-    <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
-  );
+  return function SekmeIkonu({ focused }: { focused: boolean }) {
+    return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>;
+  };
 }
 
 export default function SekmeDuzeni() {
