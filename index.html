@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kilo Takip</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#16a34a;--accent2:#15803d;
+--c-kilo:#2563eb;--c-uyku:#7c3aed;--c-stres:#dc2626;--c-ac:#ea580c;--c-akt:#0d9488}
+@media(prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--text:#f3f4f6;--muted:#9ca3af;--line:#374151}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+header{padding:16px;background:var(--accent);color:#fff}
+header h1{margin:0;font-size:20px}
+nav{display:flex;gap:4px;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;overflow-x:auto}
+nav button{border:0;background:none;padding:10px 14px;font-size:15px;color:var(--muted);border-radius:8px;cursor:pointer;white-space:nowrap}
+nav button.on{background:var(--accent);color:#fff}
+main{max-width:900px;margin:0 auto;padding:12px}
+.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card h2{margin:0 0 10px;font-size:16px;display:flex;align-items:center;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input,textarea,select{width:100%;padding:10px;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
+input[type=range]{padding:0;accent-color:var(--accent)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rv{font-weight:600;color:var(--text)}
+.btn{background:var(--accent);color:#fff;border:0;padding:12px 18px;border-radius:8px;font-size:16px;cursor:pointer}
+.btn:hover{background:var(--accent2)}
+.btn.sec{background:var(--line);color:var(--text)}
+.btn.red{background:#dc2626}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--bg);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:20px}
+.stat span{font-size:12px;color:var(--muted)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:640px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;white-space:nowrap}
+th{background:var(--bg);position:sticky;top:0}
+th.g{color:#fff}
+tr.row-click{cursor:pointer}tr.row-click:hover{background:var(--bg)}
+svg{width:100%;height:auto;display:block}
+.hint{font-size:13px;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pos{color:#16a34a}.neg{color:#dc2626}
+</style>
+</head>
+<body>
+<header><h1>🥗 Kilo Takip Defteri</h1></header>
+<nav id="nav">
+  <button data-v="today" class="on">Günlük Giriş</button>
+  <button data-v="table">Tablo</button>
+  <button data-v="charts">Grafikler</button>
+  <button data-v="data">Veri / Yedek</button>
+</nav>
+<main id="main"></main>
+
+<script>
+// ---- Kategoriler ve alanlar ----
+const CATS = [
+  {id:'kilo',  name:'⚖️ Kilo',    color:'var(--c-kilo)',  hex:'#2563eb', fields:[
+    {k:'kg',   l:'Kilo (kg)',        t:'number', step:0.1, unit:'kg'},
+    {k:'bel',  l:'Bel çevresi (cm)', t:'number', step:0.5, unit:'cm'}]},
+  {id:'uyku',  name:'😴 Uyku',    color:'var(--c-uyku)',  hex:'#7c3aed', fields:[
+    {k:'uykuSaat', l:'Uyku süresi (saat)', t:'number', step:0.25, unit:'sa'},
+    {k:'uykuKalite', l:'Uyku kalitesi (1-10)', t:'range', min:1, max:10}]},
+  {id:'stres', name:'😰 Stres',   color:'var(--c-stres)', hex:'#dc2626', fields:[
+    {k:'stres', l:'Stres seviyesi (1-10)', t:'range', min:1, max:10},
+    {k:'enerji', l:'Enerji seviyesi (1-10)', t:'range', min:1, max:10}]},
+  {id:'ac',    name:'🍽️ Açlık & Beslenme', color:'var(--c-ac)', hex:'#ea580c', fields:[
+    {k:'aclik', l:'Açlık seviyesi (1-10)', t:'range', min:1, max:10},
+    {k:'kalori', l:'Kalori (kcal)', t:'number', step:10, unit:'kcal'},
+    {k:'su', l:'Su (litre)', t:'number', step:0.25, unit:'L'}]},
+  {id:'akt',   name:'🏃 Aktivite', color:'var(--c-akt)',  hex:'#0d9488', fields:[
+    {k:'adim', l:'Adım', t:'number', step:100, unit:''},
+    {k:'egzersiz', l:'Egzersiz (dk)', t:'number', step:5, unit:'dk'}]},
+];
+const ALL = CATS.flatMap(c=>c.fields.map(f=>({...f,cat:c})));
+const KEY = 'kiloTakip.v1';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } };
+const save = d => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e){ alert('Kayıt başarısız: tarayıcı depolaması kapalı.'); } };
+let data = load();
+let view = 'today';
+let curDate = todayStr();
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+const fmtDate = s => { const [y,m,d]=s.split('-'); return d+'.'+m+'.'+y; };
+const num = v => (v===undefined||v===''||v===null)?null:Number(v);
+const sortedDates = () => Object.keys(data).sort();
+
+// ---- Görünümler ----
+function render(){
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+  const m = document.getElementById('main');
+  m.innerHTML = '';
+  ({today:vToday, table:vTable, charts:vCharts, data:vData})[view](m);
+}
+document.getElementById('nav').onclick = e => { if(e.target.dataset.v){ view=e.target.dataset.v; render(); } };
+
+function vToday(m){
+  const e = data[curDate] || {};
+  let h = `<div class="card"><label style="margin-top:0">Tarih</label><input type="date" id="dt" value="${curDate}"></div>`;
+  h += summary();
+  CATS.forEach(c=>{
+    h += `<div class="card"><h2><span class="dot" style="background:${c.color}"></span>${c.name}</h2>`;
+    c.fields.forEach(f=>{
+      const v = e[f.k] ?? '';
+      if(f.t==='range'){
+        const val = v===''?5:v;
+        h += `<label>${f.l}: <span class="rv" id="rv_${f.k}">${v===''?'—':v}</span></label>
+        <input type="range" id="f_${f.k}" min="${f.min}" max="${f.max}" value="${val}" data-set="${v!==''}">`;
+      } else {
+        h += `<label>${f.l}</label><input type="number" inputmode="decimal" id="f_${f.k}" step="${f.step}" value="${v}">`;
+      }
+    });
+    h += `</div>`;
+  });
+  h += `<div class="card"><label style="margin-top:0">Not</label><textarea id="f_not" rows="2" placeholder="Bugün nasıl geçti?">${e.not||''}</textarea>
+  <div class="actions"><button class="btn" id="save">Kaydet</button><button class="btn sec red" id="del">Bu günü sil</button></div></div>`;
+  m.innerHTML = h;
+  document.getElementById('dt').onchange = ev => { curDate = ev.target.value || todayStr(); render(); };
+  m.querySelectorAll('input[type=range]').forEach(r=>r.oninput=()=>{ r.dataset.set='true'; document.getElementById('rv_'+r.id.slice(2)).textContent=r.value; });
+  document.getElementById('save').onclick = () => {
+    const o = {};
+    ALL.forEach(f=>{
+      const el = document.getElementById('f_'+f.k);
+      if(f.t==='range'){ if(el.dataset.set==='true') o[f.k]=Number(el.value); }
+      else if(el.value!=='') o[f.k]=Number(el.value);
+    });
+    const n = document.getElementById('f_not').value.trim(); if(n) o.not=n;
+    if(!Object.keys(o).length){ alert('Boş gün kaydedilmedi.'); return; }
+    data[curDate]=o; save(data); render(); toast('Kaydedildi ✓');
+  };
+  document.getElementById('del').onclick = () => { if(data[curDate] && confirm(fmtDate(curDate)+' silinsin mi?')){ delete data[curDate]; save(data); render(); } };
+}
+
+function summary(){
+  const ds = sortedDates().filter(d=>data[d].kg!=null);
+  if(!ds.length) return `<div class="card hint">Henüz kilo kaydı yok. Aşağıdan ilk günü gir 👇</div>`;
+  const first = data[ds[0]].kg, last = data[ds[ds.length-1]].kg, diff = last-first;
+  const w = ds.slice(-7); const wd = w.length>1 ? data[w[w.length-1]].kg - data[w[0]].kg : 0;
+  const cls = x => x<=0?'pos':'neg';
+  return `<div class="card"><div class="stats">
+   <div class="stat"><b>${last.toFixed(1)} kg</b><span>Son kilo</span></div>
+   <div class="stat"><b class="${cls(diff)}">${diff>0?'+':''}${diff.toFixed(1)} kg</b><span>Başlangıçtan beri</span></div>
+   <div class="stat"><b class="${cls(wd)}">${wd>0?'+':''}${wd.toFixed(1)} kg</b><span>Son 7 kayıt</span></div>
+   <div class="stat"><b>${ds.length}</b><span>Kayıtlı gün</span></div></div></div>`;
+}
+
+function vTable(m){
+  const ds = sortedDates().reverse();
+  if(!ds.length){ m.innerHTML='<div class="card hint">Henüz veri yok.</div>'; return; }
+  let h = '<div class="card tw"><table><thead><tr><th rowspan="2">Tarih</th>';
+  CATS.forEach(c=>h+=`<th class="g" colspan="${c.fields.length}" style="background:${c.hex}">${c.name}</th>`);
+  h += '</tr><tr>';
+  ALL.forEach(f=>h+=`<th>${f.l.replace(/ \(.*\)/,'')}${f.unit?' <small>('+f.unit+')</small>':''}</th>`);
+  h += '</tr></thead><tbody>';
+  ds.forEach(d=>{
+    h += `<tr class="row-click" data-d="${d}"><td><b>${fmtDate(d)}</b></td>`;
+    ALL.forEach(f=>h+=`<td>${data[d][f.k] ?? ''}</td>`);
+    h += '</tr>';
+  });
+  h += '</tbody></table></div><p class="hint">Bir satıra tıklayarak o günü düzenleyebilirsin.</p>';
+  m.innerHTML = h;
+  m.querySelectorAll('tr.row-click').forEach(r=>r.onclick=()=>{ curDate=r.dataset.d; view='today'; render(); window.scrollTo(0,0); });
+}
+
+function vCharts(m){
+  const ds = sortedDates();
+  if(ds.length<2){ m.innerHTML='<div class="card hint">Grafik için en az 2 günlük veri gir.</div>'; return; }
+  let h='';
+  CATS.forEach(c=>{
+    h += `<div class="card"><h2><span class="dot" style="background:${c.color}"></span>${c.name}</h2>`;
+    c.fields.forEach(f=>{
+      const pts = ds.filter(d=>data[d][f.k]!=null).map(d=>({d,v:data[d][f.k]}));
+      h += `<div class="hint" style="margin-top:8px">${f.l}</div>` + (pts.length>=2 ? chart(pts,c.hex) : '<div class="hint">Yeterli veri yok.</div>');
+    });
+    h += '</div>';
+  });
+  m.innerHTML = h;
+}
+function chart(pts,color){
+  const W=600,H=180,p={l:36,r:10,t:10,b:22};
+  const vs=pts.map(x=>x.v); let mn=Math.min(...vs), mx=Math.max(...vs); if(mn===mx){mn-=1;mx+=1;}
+  const pad=(mx-mn)*0.1; mn-=pad; mx+=pad;
+  const X=i=>p.l+(W-p.l-p.r)*i/(pts.length-1), Y=v=>p.t+(H-p.t-p.b)*(1-(v-mn)/(mx-mn));
+  let s=`<svg viewBox="0 0 ${W} ${H}">`;
+  for(let i=0;i<=3;i++){ const v=mn+(mx-mn)*i/3, y=Y(v);
+    s+=`<line x1="${p.l}" x2="${W-p.r}" y1="${y}" y2="${y}" stroke="#9ca3af" stroke-opacity=".3"/><text x="${p.l-4}" y="${y+4}" font-size="11" text-anchor="end" fill="#9ca3af">${v.toFixed(1)}</text>`; }
+  s+=`<polyline fill="none" stroke="${color}" stroke-width="2.5" points="${pts.map((x,i)=>X(i)+','+Y(x.v)).join(' ')}"/>`;
+  pts.forEach((x,i)=>s+=`<circle cx="${X(i)}" cy="${Y(x.v)}" r="3.5" fill="${color}"><title>${fmtDate(x.d)}: ${x.v}</title></circle>`);
+  s+=`<text x="${p.l}" y="${H-5}" font-size="11" fill="#9ca3af">${fmtDate(pts[0].d)}</text><text x="${W-p.r}" y="${H-5}" font-size="11" text-anchor="end" fill="#9ca3af">${fmtDate(pts[pts.length-1].d)}</text></svg>`;
+  return s;
+}
+
+function vData(m){
+  m.innerHTML = `<div class="card"><h2>📤 Excel / Google Sheets'e aktar</h2>
+  <p class="hint">CSV dosyası Excel ve Google Sheets'te doğrudan açılır (Dosya → İçe aktar).</p>
+  <div class="actions"><button class="btn" id="csv">CSV indir</button><button class="btn sec" id="json">Yedek (JSON) indir</button></div></div>
+  <div class="card"><h2>📥 İçe aktar</h2><p class="hint">Daha önce indirdiğin JSON yedeğini yükle (aynı tarihler üzerine yazılır).</p>
+  <input type="file" id="imp" accept=".json,application/json"></div>
+  <div class="card"><h2>🗑️ Tüm veriyi sil</h2><button class="btn red" id="wipe">Hepsini sil</button></div>
+  <p class="hint">Veriler yalnızca bu cihazın tarayıcısında saklanır. Düzenli yedek almayı unutma.</p>`;
+  document.getElementById('csv').onclick = () => {
+    const q = v => '"'+String(v??'').replace(/"/g,'""')+'"';
+    const head = ['Tarih',...ALL.map(f=>f.cat.name.replace(/^\S+\s/,'')+' - '+f.l),'Not'];
+    const rows = sortedDates().map(d=>[d,...ALL.map(f=>data[d][f.k]),data[d].not]);
+    dl('kilo-takip.csv','﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\n'),'text/csv');
+  };
+  document.getElementById('json').onclick = () => dl('kilo-takip-yedek.json',JSON.stringify(data,null,2),'application/json');
+  document.getElementById('imp').onchange = ev => {
+    const f=ev.target.files[0]; if(!f) return;
+    const r=new FileReader(); r.onload=()=>{ try{ const o=JSON.parse(r.result); if(typeof o!=='object'||Array.isArray(o)) throw 0; Object.assign(data,o); save(data); toast('İçe aktarıldı ✓'); }catch(e){ alert('Geçersiz dosya.'); } }; r.readAsText(f);
+  };
+  document.getElementById('wipe').onclick = () => { if(confirm('TÜM veriler silinecek. Emin misin?')){ data={}; save(data); render(); } };
+}
+function dl(name,text,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+function toast(t){ const d=document.createElement('div'); d.textContent=t; d.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 18px;border-radius:20px;z-index:9'; document.body.appendChild(d); setTimeout(()=>d.remove(),1500); }
+
+render();
+</script>
+</body>
+</html>
