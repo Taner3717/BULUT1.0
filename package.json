@@ -38,7 +38,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'src/lib/*.test.ts'",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "web:pages": "EXPO_BASE_URL=/BULUT1.0 expo export -p web --output-dir dist-pages && cp 'dist-pages/+not-found.html' dist-pages/404.html && touch dist-pages/.nojekyll"
   },
   "private": true
 }

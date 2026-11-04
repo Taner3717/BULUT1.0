@@ -42,3 +42,5 @@ yarn-error.*
 
 # Supabase bağlantısı (gizli değil ama depoya koyma)
 .env
+
+dist-pages/

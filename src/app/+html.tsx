@@ -17,8 +17,8 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="theme-color" content="#F3FAF6" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#0B1410" media="(prefers-color-scheme: dark)" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="manifest.json" />
+        <link rel="apple-touch-icon" href="apple-touch-icon.png" />
         <title>Bulut</title>
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: 'body{background:#F3FAF6}@media (prefers-color-scheme: dark){body{background:#0B1410}}' }} />
