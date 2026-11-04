@@ -14,8 +14,11 @@ import {
   suEkle,
   suToplam,
   tarihStr,
+  kocGunTipi,
+  kocProgramGetir,
   uykulariGetir,
 } from '../../lib/db';
+import { haftaNo } from '../../lib/koc';
 import { gunlukHedefler } from '../../lib/hedef';
 import { VARSAYILAN_SU_AYARI } from '../../lib/notifications';
 import { useRenk } from '../../lib/tema';
@@ -25,16 +28,19 @@ const UYKU_HEDEF_DK = 8 * 60;
 
 async function yukle(db: SQLiteDatabase) {
   const bugun = tarihStr();
-  const [profil, son, toplam, su, uykular, suAyari] = await Promise.all([
+  const [profil, son, toplam, su, uykular, suAyari, program, gunTipi] = await Promise.all([
     profilGetir(db),
     sonDegerler(db),
     gunlukToplam(db, bugun),
     suToplam(db, bugun),
     uykulariGetir(db, 1),
     ayarGetir(db, 'su', VARSAYILAN_SU_AYARI),
+    kocProgramGetir(db),
+    kocGunTipi(db, bugun),
   ]);
+  const programda = program && haftaNo(program, bugun) >= 1 && haftaNo(program, bugun) <= program.hafta;
   const sonUyku = uykular[0]?.tarih === bugun ? uykular[0] : null;
-  return { profil, son, toplam, su, sonUyku, hedef: gunlukHedefler(profil, son.kilo, suAyari.hedefMl) };
+  return { profil, son, toplam, su, sonUyku, hedef: gunlukHedefler(profil, son.kilo, suAyari.hedefMl, programda ? { program, gunTipi } : null) };
 }
 
 function selam() {

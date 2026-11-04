@@ -3,9 +3,10 @@ import type { Cinsiyet } from './calc';
 import fatsecretVerisi from '../data/kisisel/fatsecret.json';
 import usdaVerisi from '../data/besinler-usda.json';
 import { aramaMetni } from './metin';
+import type { GunTipi, GunVerisi, KocProgram } from './koc';
 
 export const DB_ADI = 'bulut.db';
-const DB_SURUM = 3;
+const DB_SURUM = 4;
 
 /** SQLiteProvider onInit: tabloları oluşturur, ileride sürüm bazlı göç (migration) ekler. */
 export async function veritabaniHazirla(db: SQLiteDatabase) {
@@ -118,6 +119,37 @@ export async function veritabaniHazirla(db: SQLiteDatabase) {
     `);
     const mevcut = await db.getAllAsync<{ id: number; ad: string }>('SELECT id, ad FROM besinler');
     for (const b of mevcut) await db.runAsync('UPDATE besinler SET arama = ? WHERE id = ?', aramaMetni(b.ad), b.id);
+  }
+  if (surum < 4) {
+    // 8 haftalık koçluk programı ve günlük check-in; koç dosyasındaki ek ölçüler
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS koc_program (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        baslangic TEXT NOT NULL,
+        hafta INTEGER NOT NULL DEFAULT 8,
+        baslangic_kilo REAL NOT NULL,
+        haftalik_hedef REAL NOT NULL,
+        normal_p REAL NOT NULL, normal_y REAL NOT NULL, normal_k REAL NOT NULL,
+        yuksek_p REAL NOT NULL, yuksek_y REAL NOT NULL, yuksek_k REAL NOT NULL,
+        adim_hedef INTEGER NOT NULL,
+        sodyum_min REAL NOT NULL, sodyum_max REAL NOT NULL,
+        potasyum_min REAL NOT NULL, potasyum_max REAL NOT NULL,
+        su_hedef_l REAL NOT NULL,
+        yuksek_gun_hafta INTEGER NOT NULL DEFAULT 1,
+        notlar TEXT
+      );
+      CREATE TABLE IF NOT EXISTS koc_gunluk (
+        tarih TEXT PRIMARY KEY NOT NULL,
+        gun_tipi TEXT NOT NULL DEFAULT 'normal',
+        kilo REAL, uyku REAL,
+        stres INTEGER, enerji INTEGER, aclik INTEGER, sindirim INTEGER,
+        kardiyo TEXT, adim INTEGER, notlar TEXT
+      );
+      ALTER TABLE olcumler ADD COLUMN omuz REAL;
+      ALTER TABLE olcumler ADD COLUMN kol_sol REAL;
+      ALTER TABLE olcumler ADD COLUMN bacak_sol REAL;
+      ALTER TABLE olcumler ADD COLUMN baldir REAL;
+    `);
   }
   await db.execAsync(`PRAGMA user_version = ${DB_SURUM}`);
   await genelVeriyiAktar(db);
@@ -265,6 +297,10 @@ export type Olcum = {
   gogus: number | null;
   kol: number | null;
   bacak: number | null;
+  omuz: number | null;
+  kol_sol: number | null;
+  bacak_sol: number | null;
+  baldir: number | null;
 };
 
 export type Uyku = {
@@ -428,8 +464,9 @@ export function olcumleriGetir(db: SQLiteDatabase, limit = 60) {
 
 export function olcumEkle(db: SQLiteDatabase, o: Omit<Olcum, 'id'>) {
   return db.runAsync(
-    'INSERT INTO olcumler (tarih, kilo, bel, boyun, kalca, gogus, kol, bacak) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    o.tarih, o.kilo, o.bel, o.boyun, o.kalca, o.gogus, o.kol, o.bacak,
+    `INSERT INTO olcumler (tarih, kilo, bel, boyun, kalca, gogus, kol, bacak, omuz, kol_sol, bacak_sol, baldir)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    o.tarih, o.kilo, o.bel, o.boyun, o.kalca, o.gogus, o.kol, o.bacak, o.omuz, o.kol_sol, o.bacak_sol, o.baldir,
   );
 }
 
@@ -439,10 +476,8 @@ export function olcumSil(db: SQLiteDatabase, id: number) {
 
 /** Her alan için en son girilen değer (kilo bugün, bel geçen hafta girilmiş olabilir). */
 export async function sonDegerler(db: SQLiteDatabase) {
-  const alanlar = ['kilo', 'bel', 'boyun', 'kalca', 'gogus', 'kol', 'bacak'] as const;
-  const sonuc: Record<(typeof alanlar)[number], number | null> = {
-    kilo: null, bel: null, boyun: null, kalca: null, gogus: null, kol: null, bacak: null,
-  };
+  const alanlar = ['kilo', 'bel', 'boyun', 'kalca', 'gogus', 'kol', 'bacak', 'omuz', 'kol_sol', 'bacak_sol', 'baldir'] as const;
+  const sonuc = Object.fromEntries(alanlar.map((a) => [a, null])) as Record<(typeof alanlar)[number], number | null>;
   for (const a of alanlar) {
     const r = await db.getFirstAsync<{ v: number }>(
       `SELECT ${a} v FROM olcumler WHERE ${a} IS NOT NULL ORDER BY tarih DESC, id DESC LIMIT 1`,
@@ -505,4 +540,103 @@ export function ayarKaydet(db: SQLiteDatabase, anahtar: string, deger: unknown) 
     'INSERT INTO ayarlar (anahtar, deger) VALUES (?, ?) ON CONFLICT(anahtar) DO UPDATE SET deger = excluded.deger',
     anahtar, JSON.stringify(deger),
   );
+}
+
+// ---------- Koçluk ----------
+
+export function kocProgramGetir(db: SQLiteDatabase) {
+  return db.getFirstAsync<KocProgram>('SELECT * FROM koc_program WHERE id = 1');
+}
+
+export function kocProgramKaydet(db: SQLiteDatabase, p: KocProgram) {
+  const alanlar = [
+    'baslangic', 'hafta', 'baslangic_kilo', 'haftalik_hedef', 'normal_p', 'normal_y', 'normal_k', 'yuksek_p', 'yuksek_y', 'yuksek_k',
+    'adim_hedef', 'sodyum_min', 'sodyum_max', 'potasyum_min', 'potasyum_max', 'su_hedef_l', 'yuksek_gun_hafta', 'notlar',
+  ] as const;
+  return db.runAsync(
+    `INSERT INTO koc_program (id, ${alanlar.join(', ')}) VALUES (1, ${alanlar.map(() => '?').join(', ')})
+     ON CONFLICT(id) DO UPDATE SET ${alanlar.map((a) => `${a} = excluded.${a}`).join(', ')}`,
+    ...alanlar.map((a) => p[a]),
+  );
+}
+
+export type KocGun = {
+  tarih: string;
+  gun_tipi: GunTipi;
+  kilo: number | null;
+  uyku: number | null;
+  stres: number | null;
+  enerji: number | null;
+  aclik: number | null;
+  sindirim: number | null;
+  kardiyo: string | null;
+  adim: number | null;
+  notlar: string | null;
+};
+
+export function kocGunGetir(db: SQLiteDatabase, tarih: string) {
+  return db.getFirstAsync<KocGun>('SELECT * FROM koc_gunluk WHERE tarih = ?', tarih);
+}
+
+/** Günlük check-in'i kaydeder; kilo girildiyse o günün ölçüm kaydına da yazar (kilo grafiği için). */
+export async function kocGunKaydet(db: SQLiteDatabase, g: KocGun) {
+  await db.runAsync(
+    `INSERT INTO koc_gunluk (tarih, gun_tipi, kilo, uyku, stres, enerji, aclik, sindirim, kardiyo, adim, notlar)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(tarih) DO UPDATE SET gun_tipi = excluded.gun_tipi, kilo = excluded.kilo, uyku = excluded.uyku,
+       stres = excluded.stres, enerji = excluded.enerji, aclik = excluded.aclik, sindirim = excluded.sindirim,
+       kardiyo = excluded.kardiyo, adim = excluded.adim, notlar = excluded.notlar`,
+    g.tarih, g.gun_tipi, g.kilo, g.uyku, g.stres, g.enerji, g.aclik, g.sindirim, g.kardiyo, g.adim, g.notlar,
+  );
+  if (g.kilo != null) {
+    const var_ = await db.getFirstAsync<{ id: number }>(
+      'SELECT id FROM olcumler WHERE tarih = ? AND kilo IS NOT NULL ORDER BY id DESC LIMIT 1', g.tarih,
+    );
+    if (var_) await db.runAsync('UPDATE olcumler SET kilo = ? WHERE id = ?', g.kilo, var_.id);
+    else await db.runAsync('INSERT INTO olcumler (tarih, kilo) VALUES (?, ?)', g.tarih, g.kilo);
+  }
+}
+
+export function kocGunTipi(db: SQLiteDatabase, tarih: string) {
+  return db.getFirstAsync<{ gun_tipi: GunTipi }>('SELECT gun_tipi FROM koc_gunluk WHERE tarih = ?', tarih).then((r) => r?.gun_tipi ?? 'normal');
+}
+
+/** Verilen günler için check-in + uygulamadaki beslenme, su, uyku ve tartı kayıtlarını birleştirir. */
+export async function kocGunVerileri(db: SQLiteDatabase, tarihler: string[]): Promise<GunVerisi[]> {
+  if (!tarihler.length) return [];
+  const yer = tarihler.map(() => '?').join(', ');
+  const [checkin, beslenme, su, uyku, tarti] = await Promise.all([
+    db.getAllAsync<KocGun>(`SELECT * FROM koc_gunluk WHERE tarih IN (${yer})`, ...tarihler),
+    db.getAllAsync<{ tarih: string; kcal: number; protein: number; yag: number; karb: number; sodyum: number | null; potasyum: number | null }>(
+      `SELECT tarih, SUM(kcal) kcal, SUM(protein) protein, SUM(yag) yag, SUM(karb) karb,
+              SUM(sodyum) sodyum, SUM(potasyum) potasyum FROM ogunler WHERE tarih IN (${yer}) GROUP BY tarih`, ...tarihler),
+    db.getAllAsync<{ tarih: string; ml: number }>(`SELECT tarih, SUM(ml) ml FROM su WHERE tarih IN (${yer}) GROUP BY tarih`, ...tarihler),
+    db.getAllAsync<{ tarih: string; dk: number }>(`SELECT tarih, MAX(sure_dk) dk FROM uyku WHERE tarih IN (${yer}) GROUP BY tarih`, ...tarihler),
+    db.getAllAsync<{ tarih: string; kilo: number }>(
+      `SELECT tarih, kilo FROM olcumler WHERE kilo IS NOT NULL AND tarih IN (${yer}) ORDER BY id`, ...tarihler),
+  ]);
+  const harita = <T extends { tarih: string }>(l: T[]) => new Map(l.map((x) => [x.tarih, x]));
+  const c = harita(checkin), bs = harita(beslenme), s = harita(su), u = harita(uyku), t = harita(tarti);
+  return tarihler.map((tarih) => {
+    const g = c.get(tarih), b = bs.get(tarih);
+    return {
+      tarih,
+      gun_tipi: g?.gun_tipi ?? 'normal',
+      kilo: g?.kilo ?? t.get(tarih)?.kilo ?? null,
+      uyku: g?.uyku ?? (u.get(tarih) ? Math.round((u.get(tarih)!.dk / 60) * 10) / 10 : null),
+      stres: g?.stres ?? null,
+      enerji: g?.enerji ?? null,
+      aclik: g?.aclik ?? null,
+      sindirim: g?.sindirim ?? null,
+      kardiyo: g?.kardiyo ?? null,
+      adim: g?.adim ?? null,
+      kcal: b?.kcal ?? null,
+      protein: b?.protein ?? null,
+      yag: b?.yag ?? null,
+      karb: b?.karb ?? null,
+      sodyum: b?.sodyum ?? null,
+      potasyum: b?.potasyum ?? null,
+      su_l: s.get(tarih) ? Math.round((s.get(tarih)!.ml / 1000) * 10) / 10 : null,
+    };
+  });
 }

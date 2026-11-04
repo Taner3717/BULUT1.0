@@ -183,14 +183,16 @@ export function besinHesapla(b: ReferansBesin, miktar: number) {
   };
 }
 
+export type MikroHedef = { deger: number; tur: 'ust' | 'alt' | 'aralik'; min?: number };
+
 /** Günlük mikro besin hedefleri. Sodyum/kolesterol/doymuş yağ üst sınır, potasyum/lif alt hedeftir. */
 export function mikroHedefler(kalori: number | null, sodyumOzel?: number | null, potasyumOzel?: number | null) {
   return {
-    sodyum: { deger: sodyumOzel ?? 2000, tur: 'ust' as const }, // DSÖ: < 2000 mg (≈ 5 g tuz)
-    potasyum: { deger: potasyumOzel ?? 3500, tur: 'alt' as const }, // DSÖ: ≥ 3500 mg
-    lif: { deger: 25, tur: 'alt' as const }, // DSÖ: ≥ 25 g
-    seker: { deger: kalori ? Math.round((kalori * 0.1) / 4) : 50, tur: 'ust' as const }, // serbest şeker < %10 enerji
-    doymus: { deger: kalori ? Math.round((kalori * 0.1) / 9) : 22, tur: 'ust' as const }, // < %10 enerji
-    kolesterol: { deger: 300, tur: 'ust' as const },
+    sodyum: { deger: sodyumOzel ?? 2000, tur: 'ust' } as MikroHedef, // DSÖ: < 2000 mg (≈ 5 g tuz)
+    potasyum: { deger: potasyumOzel ?? 3500, tur: 'alt' } as MikroHedef, // DSÖ: ≥ 3500 mg
+    lif: { deger: 25, tur: 'alt' } as MikroHedef, // DSÖ: ≥ 25 g
+    seker: { deger: kalori ? Math.round((kalori * 0.1) / 4) : 50, tur: 'ust' } as MikroHedef, // serbest şeker < %10 enerji
+    doymus: { deger: kalori ? Math.round((kalori * 0.1) / 9) : 22, tur: 'ust' } as MikroHedef, // < %10 enerji
+    kolesterol: { deger: 300, tur: 'ust' } as MikroHedef,
   };
 }

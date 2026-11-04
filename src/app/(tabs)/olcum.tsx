@@ -22,17 +22,21 @@ import { useRenk } from '../../lib/tema';
 import { useVeri } from '../../lib/useVeri';
 
 const ALANLAR = [
-  { k: 'kilo', ad: 'Kilo (kg)' },
-  { k: 'bel', ad: 'Bel (cm)' },
-  { k: 'boyun', ad: 'Boyun (cm)' },
-  { k: 'kalca', ad: 'Kalça (cm)' },
-  { k: 'gogus', ad: 'Göğüs (cm)' },
-  { k: 'kol', ad: 'Kol (cm)' },
-  { k: 'bacak', ad: 'Bacak (cm)' },
+  { k: 'kilo', ad: 'Kilo (kg)', kisa: 'Kilo' },
+  { k: 'boyun', ad: 'Boyun (cm)', kisa: 'Boyun' },
+  { k: 'omuz', ad: 'Omuz (cm)', kisa: 'Omuz' },
+  { k: 'gogus', ad: 'Göğüs (cm)', kisa: 'Göğüs' },
+  { k: 'kol', ad: 'Sağ kol (cm)', kisa: 'S.kol' },
+  { k: 'kol_sol', ad: 'Sol kol (cm)', kisa: 'L.kol' },
+  { k: 'bel', ad: 'Bel, göbek hizası (cm)', kisa: 'Bel' },
+  { k: 'kalca', ad: 'Kalça (cm)', kisa: 'Kalça' },
+  { k: 'bacak', ad: 'Sağ uyluk (cm)', kisa: 'S.uyluk' },
+  { k: 'bacak_sol', ad: 'Sol uyluk (cm)', kisa: 'L.uyluk' },
+  { k: 'baldir', ad: 'Baldır (cm)', kisa: 'Baldır' },
 ] as const;
 type AlanAdi = (typeof ALANLAR)[number]['k'];
 
-const BOS: Record<AlanAdi, string> = { kilo: '', bel: '', boyun: '', kalca: '', gogus: '', kol: '', bacak: '' };
+const BOS = Object.fromEntries(ALANLAR.map(({ k }) => [k, ''])) as Record<AlanAdi, string>;
 
 async function yukle(db: SQLiteDatabase) {
   const [profil, son, gecmis] = await Promise.all([profilGetir(db), sonDegerler(db), olcumleriGetir(db, 60)]);
@@ -157,7 +161,13 @@ export default function OlcumEkrani() {
           />
           <Karo ikon="flame" renk={r.kirmizi} etiket="BMR" deger={h.bmr ? `${h.bmr}` : '—'} alt="kcal / gün (dinlenme)" />
           <Karo ikon="walk" renk={r.uyku} etiket="TDEE" deger={h.tdee ? `${h.tdee}` : '—'} alt="kcal / gün (aktiviteyle)" />
-          <Karo ikon="water-outline" renk={r.su} etiket="SU HEDEFİ" deger={`${(h.su / 1000).toFixed(1)} L`} alt="35 ml × kg" />
+          <Karo
+            ikon="git-compare-outline"
+            renk={r.protein}
+            etiket="BEL / KALÇA"
+            deger={son.bel && son.kalca ? `${yuvarla(son.bel / son.kalca, 2)}` : '—'}
+            alt={son.bel && son.kalca ? (son.bel / son.kalca < (profil.cinsiyet === 'erkek' ? 0.9 : 0.85) ? 'Sağlıklı aralık' : 'Riskli') : 'bel + kalça gir'}
+          />
         </View>
       )}
 
@@ -175,7 +185,7 @@ export default function OlcumEkrani() {
           ))}
         </View>
         <Buton baslik="Kaydet" ikon="checkmark" bas={kaydet} />
-        <Soluk>Yağ oranı için bel (göbek hizası) ve boyun ölçüsü gerekli; kadınlarda kalça da.</Soluk>
+        <Soluk>Haftada bir, pazartesi sabahı aç karnına ölç. Yağ oranı için bel ve boyun gerekli; kadınlarda kalça da.</Soluk>
       </Kart>
 
       {gecmis.length > 0 && (
@@ -186,7 +196,7 @@ export default function OlcumEkrani() {
               sol={tarihGoster(o.tarih)}
               alt={
                 ALANLAR.filter(({ k }) => k !== 'kilo' && o[k] != null)
-                  .map(({ k, ad }) => `${ad.split(' ')[0]} ${o[k]}`)
+                  .map(({ k, kisa }) => `${kisa} ${o[k]}`)
                   .join(' · ') || undefined
               }
               sag={o.kilo != null ? `${o.kilo} kg` : undefined}

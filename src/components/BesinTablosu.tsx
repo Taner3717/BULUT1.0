@@ -31,8 +31,8 @@ export function BesinTablosu({ toplam, hedef, sade }: { toplam: GunlukToplam; he
         const deger = toplam[a];
         const h = hedef[a];
         const oran = h.deger ? deger / h.deger : 0;
-        const asim = h.tur === 'ust' && deger > h.deger;
-        const tamam = h.tur === 'alt' && deger >= h.deger;
+        const asim = (h.tur === 'ust' || h.tur === 'aralik') && deger > h.deger;
+        const tamam = (h.tur === 'alt' && deger >= h.deger) || (h.tur === 'aralik' && deger >= (h.min ?? 0) && deger <= h.deger);
         const renkli = asim ? r.kirmizi : tamam ? r.ana : a === 'sodyum' ? r.turuncu : a === 'potasyum' ? r.uyku : r.su;
         const eksik = toplam[`${a}_eksik`];
         return (
@@ -46,7 +46,9 @@ export function BesinTablosu({ toplam, hedef, sade }: { toplam: GunlukToplam; he
                 {bicimle(deger, birim)}
                 <Text style={{ color: r.soluk, fontWeight: '400' }}>
                   {' '}
-                  / {h.tur === 'ust' ? '≤' : '≥'} {bicimle(h.deger, birim)} {birim}
+                  {h.tur === 'aralik'
+                    ? `/ ${bicimle(h.min ?? 0, birim)}-${bicimle(h.deger, birim)} ${birim}`
+                    : `/ ${h.tur === 'ust' ? '≤' : '≥'} ${bicimle(h.deger, birim)} ${birim}`}
                 </Text>
               </Text>
             </View>
@@ -55,7 +57,11 @@ export function BesinTablosu({ toplam, hedef, sade }: { toplam: GunlukToplam; he
               <Etiket>
                 {asim
                   ? `Sınırı ${bicimle(deger - h.deger, birim)} ${birim} aştın`
-                  : h.tur === 'ust'
+                  : h.tur === 'aralik'
+                    ? tamam
+                      ? 'Hedef aralığındasın'
+                      : `Aralığa ${bicimle((h.min ?? 0) - deger, birim)} ${birim} daha`
+                    : h.tur === 'ust'
                     ? `${bicimle(Math.max(0, h.deger - deger), birim)} ${birim} hakkın kaldı`
                     : tamam
                       ? 'Hedefe ulaştın'

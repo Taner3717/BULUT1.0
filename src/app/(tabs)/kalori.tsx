@@ -20,6 +20,8 @@ import {
 import {
   gunEkle,
   gunlukToplam,
+  kocGunTipi,
+  kocProgramGetir,
   ogunleriGetir,
   ogunSil,
   profilGetir,
@@ -28,6 +30,7 @@ import {
   tarihStr,
 } from '../../lib/db';
 import { gunlukHedefler } from '../../lib/hedef';
+import { haftaNo } from '../../lib/koc';
 import { useRenk, type Renkler } from '../../lib/tema';
 import { useVeri } from '../../lib/useVeri';
 
@@ -58,13 +61,17 @@ export default function KaloriEkrani() {
 
   const yukle = useCallback(
     async (db: SQLiteDatabase) => {
-      const [liste, toplam, profil, son] = await Promise.all([
+      const [liste, toplam, profil, son, program, gunTipi] = await Promise.all([
         ogunleriGetir(db, tarih),
         gunlukToplam(db, tarih),
         profilGetir(db),
         sonDegerler(db),
+        kocProgramGetir(db),
+        kocGunTipi(db, tarih),
       ]);
-      return { liste, toplam, hedef: gunlukHedefler(profil, son.kilo) };
+      const hn = program ? haftaNo(program, tarih) : 0;
+      const koc = program && hn >= 1 && hn <= program.hafta ? { program, gunTipi } : null;
+      return { liste, toplam, hedef: gunlukHedefler(profil, son.kilo, null, koc), koc };
     },
     [tarih],
   );

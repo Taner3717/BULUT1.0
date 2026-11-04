@@ -29,6 +29,7 @@ export default function SekmeDuzeni() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Bugün', headerShown: false, tabBarIcon: ikon('today', 'today-outline') }} />
+      <Tabs.Screen name="koc" options={{ title: 'Koç', tabBarIcon: ikon('trophy', 'trophy-outline') }} />
       <Tabs.Screen name="kalori" options={{ title: 'Kalori', tabBarIcon: ikon('restaurant', 'restaurant-outline') }} />
       <Tabs.Screen name="olcum" options={{ title: 'Vücut', tabBarIcon: ikon('body', 'body-outline') }} />
       <Tabs.Screen name="uyku" options={{ title: 'Uyku', tabBarIcon: ikon('moon', 'moon-outline') }} />

@@ -60,6 +60,7 @@ function TemaliYigin() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="profil" options={{ title: 'Profil & Ayarlar', presentation: 'modal' }} />
+        <Stack.Screen name="koc-program" options={{ title: 'Koçluk programı', presentation: 'modal' }} />
         <Stack.Screen name="foto" options={{ title: 'Fotoğrafla ekle', presentation: 'modal' }} />
       </Stack>
     </>

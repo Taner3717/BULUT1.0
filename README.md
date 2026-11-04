@@ -16,6 +16,7 @@ Tasarım: yeşil palet, otomatik karanlık mod (Profil → Görünüm'den Açık
 | **Profil** | Boy, yaş, cinsiyet, aktivite seviyesi, hedef (kilo ver / koru / al) |
 | **Besin değerleri** | Kalorinin altında FatSecret tarzı tablo: sodyum (≤ 2000 mg) ve potasyum (≥ 3500 mg) öne çıkar; lif, şeker, doymuş yağ, kolesterol. Bilinmeyen değerler `*` ile işaretlenir |
 | **Yiyecek arama** | 268 doğrulanmış yiyecek (USDA FoodData Central, Türkçe adlar, Türk porsiyonları) uygulamayla gelir; Türkçe karaktersiz de arar ("cig kofte"). Seçince gram yaz ya da porsiyon seç (ör. "1 orta boy · 118 g"), değerler dolar. Bulunamazsa **İnternette ara** ile Open Food Facts'te paketli ürünler (Eti, Ülker, İçim…). Kendi girdiğin yiyecekler de listeye eklenir |
+| **Koç (8 haftalık program)** | Koç dosyasındaki ("Kilo Takip Tablosu") sistem: normal/yüksek gün makro hedefleri, günlük check-in (kilo, uyku, stres, enerji, açlık, sindirim 1-5, kardiyo, adım), beslenme/su/sodyum/potasyum kayıtlardan otomatik, 7 günlük tablo ve ortalamalar, hedef kilo çizgisi (başlangıç + haftalık hedef × hafta), kurallara dayalı haftalık değerlendirme. Program aktifken Bugün/Kalori hedefleri gün tipine göre programdan gelir |
 | **📷 Fotoğrafla ekle** | Yemek fotoğrafı → her yiyecek için tahmini gram, kalori ve makro → gramı düzelt (değerler orantılı güncellenir) → öğüne kaydet |
 
 Hesaplamalar: `src/lib/calc.ts` (Mifflin-St Jeor BMR, aktivite katsayılı TDEE, US Navy yağ oranı,
