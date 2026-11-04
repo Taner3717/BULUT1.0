@@ -24,6 +24,8 @@ export default function ProfilEkrani() {
   const [aktivite, setAktivite] = useState<number>(1.375);
   const [hedefAyar, setHedefAyar] = useState<number>(0);
   const [hedefKilo, setHedefKilo] = useState('');
+  const [sodyumHedef, setSodyumHedef] = useState('');
+  const [potasyumHedef, setPotasyumHedef] = useState('');
   const [kilo, setKilo] = useState<number | null>(null);
 
   useEffect(() => {
@@ -37,6 +39,8 @@ export default function ProfilEkrani() {
       setAktivite(p.aktivite);
       setHedefAyar(p.hedef_ayar);
       setHedefKilo(p.hedef_kilo ? String(p.hedef_kilo) : '');
+      setSodyumHedef(p.sodyum_hedef ? String(p.sodyum_hedef) : '');
+      setPotasyumHedef(p.potasyum_hedef ? String(p.potasyum_hedef) : '');
     })();
   }, [db]);
 
@@ -44,7 +48,16 @@ export default function ProfilEkrani() {
   const yasN = sayiOku(yas);
   const gecerli = boyN != null && boyN > 100 && boyN < 250 && yasN != null && yasN >= 10 && yasN < 110;
   const taslak: Profil | null = gecerli
-    ? { boy: boyN, yas: Math.round(yasN), cinsiyet, aktivite, hedef_ayar: hedefAyar, hedef_kilo: sayiOku(hedefKilo) }
+    ? {
+        boy: boyN,
+        yas: Math.round(yasN),
+        cinsiyet,
+        aktivite,
+        hedef_ayar: hedefAyar,
+        hedef_kilo: sayiOku(hedefKilo),
+        sodyum_hedef: sayiOku(sodyumHedef),
+        potasyum_hedef: sayiOku(potasyumHedef),
+      }
     : null;
   const h = gunlukHedefler(taslak, kilo);
 
@@ -82,6 +95,14 @@ export default function ProfilEkrani() {
       <Kart baslik="Hedef" ikon="flag" ikonRenk={r.protein}>
         <Secenekler secenekler={HEDEFLER} secili={hedefAyar} sec={setHedefAyar} />
         <Alan etiket="Hedef kilo (isteğe bağlı)" deger={hedefKilo} degistir={setHedefKilo} ipucu="75" />
+      </Kart>
+
+      <Kart baslik="Sodyum & potasyum" ikon="flask" ikonRenk={r.turuncu}>
+        <Satir>
+          <Alan etiket="Sodyum üst sınırı (mg)" deger={sodyumHedef} degistir={setSodyumHedef} ipucu="2000" klavye="number-pad" />
+          <Alan etiket="Potasyum hedefi (mg)" deger={potasyumHedef} degistir={setPotasyumHedef} ipucu="3500" klavye="number-pad" />
+        </Satir>
+        <Soluk>Boş bırakırsan Dünya Sağlık Örgütü önerisi kullanılır: sodyum ≤ 2000 mg (≈ 5 g tuz), potasyum ≥ 3500 mg.</Soluk>
       </Kart>
 
       <Kart baslik="Günlük ihtiyacın" ikon="calculator" ikonRenk={r.kirmizi}>

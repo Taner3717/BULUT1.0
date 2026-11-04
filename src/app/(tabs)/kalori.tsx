@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
 import { router } from 'expo-router';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { BesinTablosu } from '../../components/BesinTablosu';
+import { ElleEkleFormu } from '../../components/ElleEkleFormu';
 import {
-  Alan,
   Buton,
   Ekran,
   Etiket,
@@ -13,15 +14,12 @@ import {
   Kart,
   ListeSatiri,
   Satir,
-  Secenekler,
   TarihGezgini,
   type IkonAdi,
 } from '../../components/ui';
-import { sayiOku } from '../../lib/calc';
 import {
   gunEkle,
   gunlukToplam,
-  ogunEkle,
   ogunleriGetir,
   ogunSil,
   profilGetir,
@@ -53,25 +51,10 @@ function ogunIkonu(ogun: string, r: Renkler): { ikon: IkonAdi; renk: string } {
   }
 }
 
-function varsayilanOgun(): string {
-  const h = new Date().getHours();
-  if (h < 11) return 'Kahvaltı';
-  if (h < 16) return 'Öğle';
-  if (h < 21) return 'Akşam';
-  return 'Ara öğün';
-}
-
 export default function KaloriEkrani() {
   const r = useRenk();
   const [tarih, setTarih] = useState(tarihStr());
   const [formAcik, setFormAcik] = useState(false);
-  const [ogun, setOgun] = useState<string>(varsayilanOgun());
-  const [yemek, setYemek] = useState('');
-  const [gram, setGram] = useState('');
-  const [kcal, setKcal] = useState('');
-  const [protein, setProtein] = useState('');
-  const [karb, setKarb] = useState('');
-  const [yag, setYag] = useState('');
 
   const yukle = useCallback(
     async (db: SQLiteDatabase) => {
@@ -86,32 +69,6 @@ export default function KaloriEkrani() {
     [tarih],
   );
   const { veri, yenile, db } = useVeri(yukle);
-
-  async function ekle() {
-    const k = sayiOku(kcal);
-    if (!yemek.trim() || k == null || k < 0) {
-      Alert.alert('Eksik bilgi', 'En az yemek adı ve kalori gir.');
-      return;
-    }
-    await ogunEkle(db, {
-      tarih,
-      ogun,
-      yemek: yemek.trim(),
-      gram: sayiOku(gram),
-      kcal: k,
-      protein: sayiOku(protein) ?? 0,
-      karb: sayiOku(karb) ?? 0,
-      yag: sayiOku(yag) ?? 0,
-      kaynak: 'elle',
-    });
-    setYemek('');
-    setGram('');
-    setKcal('');
-    setProtein('');
-    setKarb('');
-    setYag('');
-    yenile();
-  }
 
   const bugun = tarihStr();
   const hedef = veri?.hedef;
@@ -153,6 +110,8 @@ export default function KaloriEkrani() {
               ))}
             </View>
           </Satir>
+          <View style={{ height: 1, backgroundColor: r.cizgi }} />
+          <BesinTablosu toplam={toplam} hedef={hedef.mikro} />
         </Kart>
       )}
 
@@ -166,22 +125,7 @@ export default function KaloriEkrani() {
         />
       </Satir>
 
-      {formAcik && (
-        <Kart baslik="Elle ekle" ikon="create-outline">
-          <Secenekler secenekler={OGUNLER} secili={ogun} sec={setOgun} />
-          <Satir>
-            <Alan etiket="Yemek" deger={yemek} degistir={setYemek} ipucu="Tavuk göğsü" klavye="default" genis={2} />
-            <Alan etiket="Gram" deger={gram} degistir={setGram} ipucu="150" />
-          </Satir>
-          <Satir>
-            <Alan etiket="Kalori" deger={kcal} degistir={setKcal} ipucu="kcal" />
-            <Alan etiket="Protein" deger={protein} degistir={setProtein} ipucu="g" />
-            <Alan etiket="Karb." deger={karb} degistir={setKarb} ipucu="g" />
-            <Alan etiket="Yağ" deger={yag} degistir={setYag} ipucu="g" />
-          </Satir>
-          <Buton baslik="Ekle" ikon="add" bas={ekle} />
-        </Kart>
-      )}
+      {formAcik && <ElleEkleFormu db={db} tarih={tarih} eklendi={yenile} />}
 
       {veri && veri.liste.length === 0 && (
         <Kart>
@@ -210,7 +154,11 @@ export default function KaloriEkrani() {
                 <ListeSatiri
                   key={o.id}
                   sol={(o.kaynak === 'foto' ? '📷 ' : '') + o.yemek + (o.gram ? ` · ${o.gram} g` : '')}
-                  alt={`P ${Math.round(o.protein)} · K ${Math.round(o.karb)} · Y ${Math.round(o.yag)}`}
+                  alt={
+                    `P ${Math.round(o.protein)} · K ${Math.round(o.karb)} · Y ${Math.round(o.yag)}` +
+                    (o.sodyum != null ? ` · Na ${Math.round(o.sodyum)} mg` : '') +
+                    (o.potasyum != null ? ` · K⁺ ${Math.round(o.potasyum)} mg` : '')
+                  }
                   sag={`${Math.round(o.kcal)}`}
                   sil={async () => {
                     await ogunSil(db, o.id);

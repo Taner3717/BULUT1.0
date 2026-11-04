@@ -16,6 +16,7 @@ const SISTEM = `Sen bir beslenme uzmanısın. Kullanıcı bir yemek fotoğrafı 
 - Yemek adlarını Türkçe ve yaygın kullanılan haliyle yaz (ör. "Mercimek çorbası", "Izgara köfte", "Bulgur pilavı").
 - Gramajı görsel ipuçlarından tahmin et: tabak (standart yemek tabağı ~26 cm), çatal-kaşık, bardak, ekmek dilimi gibi referansları kullan. Görünen porsiyonu tahmin et, standart porsiyonu değil.
 - Kalori ve makroları (protein, karbonhidrat, yağ; gram cinsinden) o gramaj için ver. Pişirme yöntemini (kızartma, yağ, sos) hesaba kat.
+- Ayrıca sodyum ve potasyumu (mg), lif, şeker ve doymuş yağı (g), kolesterolü (mg) tahmin et. Tuz, salça, peynir, turşu, sucuk, ekmek ve hazır soslardaki sodyumu atlama.
 - İçecekleri de dahil et; su ve şekersiz çay/kahve 0 kcal'dir.
 - Kullanıcı not eklediyse (ör. "yarısını yedim", "zeytinyağlı") ona göre düzelt.
 - Fotoğrafta yiyecek yoksa "yemekler" listesini boş bırak ve "not" alanında açıkla.
@@ -32,7 +33,7 @@ const SEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['ad', 'gram', 'kcal', 'protein', 'karb', 'yag'],
+        required: ['ad', 'gram', 'kcal', 'protein', 'karb', 'yag', 'sodyum', 'potasyum', 'lif', 'seker', 'doymus', 'kolesterol'],
         properties: {
           ad: { type: 'string' },
           gram: { type: 'number' },
@@ -40,6 +41,12 @@ const SEMA = {
           protein: { type: 'number' },
           karb: { type: 'number' },
           yag: { type: 'number' },
+          sodyum: { type: 'number' },
+          potasyum: { type: 'number' },
+          lif: { type: 'number' },
+          seker: { type: 'number' },
+          doymus: { type: 'number' },
+          kolesterol: { type: 'number' },
         },
       },
     },
@@ -48,7 +55,20 @@ const SEMA = {
   },
 } as const;
 
-type Yemek = { ad: string; gram: number; kcal: number; protein: number; karb: number; yag: number };
+type Yemek = {
+  ad: string;
+  gram: number;
+  kcal: number;
+  protein: number;
+  karb: number;
+  yag: number;
+  sodyum: number;
+  potasyum: number;
+  lif: number;
+  seker: number;
+  doymus: number;
+  kolesterol: number;
+};
 type Sonuc = { yemekler: Yemek[]; guven: 'dusuk' | 'orta' | 'yuksek'; not: string };
 
 function hata(durum: number, mesaj: string) {
@@ -134,6 +154,12 @@ export default {
           protein: sinirla(y.protein, 500),
           karb: sinirla(y.karb, 800),
           yag: sinirla(y.yag, 400),
+          sodyum: sinirla(y.sodyum, 20000),
+          potasyum: sinirla(y.potasyum, 20000),
+          lif: sinirla(y.lif, 200),
+          seker: sinirla(y.seker, 800),
+          doymus: sinirla(y.doymus, 300),
+          kolesterol: sinirla(y.kolesterol, 5000),
         })),
       };
       return Response.json(sonuc);

@@ -57,6 +57,27 @@ test('uyku süresi gece yarısını geçer', () => {
 test('porsiyon ölçekleme', async () => {
   const { porsiyonOlcekle } = await import('./calc.ts');
   const pilav = { ad: 'Pilav', gram: 200, kcal: 260, protein: 5, karb: 56, yag: 2 };
-  assert.deepEqual(porsiyonOlcekle(pilav, 100), { ad: 'Pilav', gram: 100, kcal: 130, protein: 2.5, karb: 28, yag: 1 });
+  const yarim = porsiyonOlcekle(pilav, 100);
+  assert.deepEqual(
+    { ad: yarim.ad, gram: yarim.gram, kcal: yarim.kcal, protein: yarim.protein, karb: yarim.karb, yag: yarim.yag },
+    { ad: 'Pilav', gram: 100, kcal: 130, protein: 2.5, karb: 28, yag: 1 },
+  );
+  assert.equal(yarim.sodyum, null);
   assert.equal(porsiyonOlcekle({ ...pilav, gram: 0 }, 50).kcal, 260);
+});
+
+test('yiyecek listesinden miktar hesabı ve ek besinler', async () => {
+  const { besinHesapla, porsiyonOlcekle, mikroHedefler } = await import('./calc.ts');
+  const tavuk = { referans: 100, kcal: 164, protein: 30.76, karb: 0, yag: 3.54, sodyum: 396, potasyum: 254, lif: 0, seker: 0, doymus: 1, kolesterol: 84 };
+  const r = besinHesapla(tavuk, 200);
+  assert.equal(r.kcal, 328);
+  assert.equal(r.sodyum, 792);
+  assert.equal(r.potasyum, 508);
+  const ketcap = { referans: 100, kcal: 34, protein: 0.6, karb: 9.3, yag: 0, sodyum: 2500, potasyum: null };
+  assert.equal(besinHesapla(ketcap, 50).potasyum, null);
+  const p = porsiyonOlcekle({ ad: 'X', gram: 100, kcal: 100, protein: 1, karb: 1, yag: 1, sodyum: 500, potasyum: null }, 50);
+  assert.equal(p.sodyum, 250);
+  assert.equal(p.potasyum, null);
+  assert.equal(mikroHedefler(null).sodyum.deger, 2000);
+  assert.equal(mikroHedefler(2000, 1500).sodyum.deger, 1500);
 });

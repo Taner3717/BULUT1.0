@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BesinTablosu } from '../../components/BesinTablosu';
 import { Buton, Ekran, Etiket, Halka, Ikon, IkonKutu, Ilerleme, Kart, Satir, Soluk, type IkonAdi } from '../../components/ui';
 import { dkMetin, navyYagOrani, vki, vkiKategori, yuvarla } from '../../lib/calc';
 import {
@@ -169,6 +170,8 @@ export default function Bugun() {
             <MakroCubuk ad="Karb." alinan={toplam.karb} hedef={hedef.makro?.karb} renkli={r.su} />
             <MakroCubuk ad="Yağ" alinan={toplam.yag} hedef={hedef.makro?.yag} renkli={r.uyku} />
           </Satir>
+          <View style={{ height: 1, backgroundColor: r.cizgi }} />
+          <BesinTablosu toplam={toplam} hedef={hedef.mikro} sade />
         </Kart>
 
         <Kart>

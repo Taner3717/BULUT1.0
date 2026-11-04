@@ -14,6 +14,8 @@ Tasarım: yeşil palet, otomatik karanlık mod (Profil → Görünüm'den Açık
 | **Uyku** | Yatış/kalkış saati, süre (gece yarısını geçmeyi hesaplar), kalite, 7 günlük ortalama |
 | **Su** | Hızlı ekleme (+200/+250/+500), kiloya göre hedef (35 ml/kg), zamanlı hatırlatıcı bildirimleri; bildirimdeki “+250 ml içtim” butonu suyu direkt kaydeder |
 | **Profil** | Boy, yaş, cinsiyet, aktivite seviyesi, hedef (kilo ver / koru / al) |
+| **Besin değerleri** | Kalorinin altında FatSecret tarzı tablo: sodyum (≤ 2000 mg) ve potasyum (≥ 3500 mg) öne çıkar; lif, şeker, doymuş yağ, kolesterol. Bilinmeyen değerler `*` ile işaretlenir |
+| **Yiyeceklerim** | Elle eklerken yazdıkça arama, sık yediklerin üstte; seçince gramla bütün değerler dolar. Yeni girilen yiyecek listeye kaydedilir |
 | **📷 Fotoğrafla ekle** | Yemek fotoğrafı → her yiyecek için tahmini gram, kalori ve makro → gramı düzelt (değerler orantılı güncellenir) → öğüne kaydet |
 
 Hesaplamalar: `src/lib/calc.ts` (Mifflin-St Jeor BMR, aktivite katsayılı TDEE, US Navy yağ oranı,
@@ -66,6 +68,19 @@ Telefon ──(anonim oturum + fotoğraf)──▶ Supabase Edge Function ──
 İsteğe bağlı: `npx supabase secrets set FOTO_GUNLUK_LIMIT=50` ile günlük limiti değiştir.
 
 Maliyet: fotoğraf 1024 px'e küçültülüp gönderilir; analiz başına tahmini birkaç sent.
+
+## FatSecret'ten aktarma
+
+FatSecret → Raporlar → *Food Diary* PDF'ini indir, sonra:
+
+```bash
+pdftotext -layout FoodDiary.pdf diary.txt          # poppler-utils
+python3 scripts/fatsecret_aktar.py diary.txt src/data/kisisel/fatsecret.json
+```
+
+Uygulama açılışta bu dosyadaki yiyecekleri **Yiyeceklerim**'e, günlük kayıtlarını ilgili günlere bir kez aktarır.
+Betik her günün kalori toplamını PDF'teki toplamla karşılaştırır. `src/data/kisisel/fatsecret.json`
+kişisel veridir; depo herkese açıksa commit etme.
 
 ## Klasör yapısı
 

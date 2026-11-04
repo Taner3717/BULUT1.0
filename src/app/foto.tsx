@@ -92,13 +92,36 @@ export default function FotoEkrani() {
     ad: s.ad.trim() || s.taban.ad,
   }));
   const toplam = hesaplanan.reduce(
-    (a, y) => ({ kcal: a.kcal + y.kcal, protein: a.protein + y.protein, karb: a.karb + y.karb, yag: a.yag + y.yag }),
-    { kcal: 0, protein: 0, karb: 0, yag: 0 },
+    (a, y) => ({
+      kcal: a.kcal + y.kcal,
+      protein: a.protein + y.protein,
+      karb: a.karb + y.karb,
+      yag: a.yag + y.yag,
+      sodyum: a.sodyum + (y.sodyum ?? 0),
+      potasyum: a.potasyum + (y.potasyum ?? 0),
+    }),
+    { kcal: 0, protein: 0, karb: 0, yag: 0, sodyum: 0, potasyum: 0 },
   );
 
   async function kaydet() {
     for (const y of hesaplanan) {
-      await ogunEkle(db, { tarih, ogun, yemek: y.ad, gram: y.gram, kcal: y.kcal, protein: y.protein, karb: y.karb, yag: y.yag, kaynak: 'foto' });
+      await ogunEkle(db, {
+        tarih,
+        ogun,
+        yemek: y.ad,
+        gram: y.gram,
+        kcal: y.kcal,
+        protein: y.protein,
+        karb: y.karb,
+        yag: y.yag,
+        sodyum: y.sodyum ?? null,
+        potasyum: y.potasyum ?? null,
+        lif: y.lif ?? null,
+        seker: y.seker ?? null,
+        doymus: y.doymus ?? null,
+        kolesterol: y.kolesterol ?? null,
+        kaynak: 'foto',
+      });
     }
     router.back();
   }
@@ -223,6 +246,7 @@ export default function FotoEkrani() {
                     <Text style={{ color: r.metin, fontWeight: '800' }}>{y.kcal} kcal</Text>
                     <Soluk>
                       P {y.protein} · K {y.karb} · Y {y.yag}
+                      {y.sodyum != null ? ` · Na ${Math.round(y.sodyum)} mg` : ''}
                     </Soluk>
                   </Satir>
                 </View>
@@ -244,6 +268,16 @@ export default function FotoEkrani() {
                   <Text style={{ color: r.protein, fontWeight: '700' }}>P {Math.round(toplam.protein)} g</Text>
                   <Text style={{ color: r.su, fontWeight: '700' }}>K {Math.round(toplam.karb)} g</Text>
                   <Text style={{ color: r.uyku, fontWeight: '700' }}>Y {Math.round(toplam.yag)} g</Text>
+                </View>
+              </Satir>
+              <Satir style={{ gap: 10 }}>
+                <View style={{ flex: 1, backgroundColor: r.kartIkincil, borderRadius: 12, padding: 10 }}>
+                  <Etiket>SODYUM</Etiket>
+                  <Text style={{ fontSize: 17, fontWeight: '800', color: r.metin }}>{Math.round(toplam.sodyum)} mg</Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: r.kartIkincil, borderRadius: 12, padding: 10 }}>
+                  <Etiket>POTASYUM</Etiket>
+                  <Text style={{ fontSize: 17, fontWeight: '800', color: r.metin }}>{Math.round(toplam.potasyum)} mg</Text>
                 </View>
               </Satir>
               <Etiket>ÖĞÜN</Etiket>

@@ -1,14 +1,18 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Cinsiyet } from './calc';
+import fatsecretVerisi from '../data/kisisel/fatsecret.json';
 
 export const DB_ADI = 'bulut.db';
-const DB_SURUM = 1;
+const DB_SURUM = 2;
 
 /** SQLiteProvider onInit: tabloları oluşturur, ileride sürüm bazlı göç (migration) ekler. */
 export async function veritabaniHazirla(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const surum = row?.user_version ?? 0;
-  if (surum >= DB_SURUM) return;
+  if (surum >= DB_SURUM) {
+    await kisiselVeriyiAktar(db);
+    return;
+  }
 
   if (surum === 0) {
     await db.execAsync(`
@@ -73,8 +77,75 @@ export async function veritabaniHazirla(db: SQLiteDatabase) {
       );
     `);
   }
-  // Yeni sürümlerde: if (surum < 2) { ALTER TABLE ... }
+  if (surum < 2) {
+    // Ek besin değerleri (bilinmiyorsa NULL) ve kişisel yiyecek listesi
+    await db.execAsync(`
+      ALTER TABLE ogunler ADD COLUMN sodyum REAL;
+      ALTER TABLE ogunler ADD COLUMN potasyum REAL;
+      ALTER TABLE ogunler ADD COLUMN lif REAL;
+      ALTER TABLE ogunler ADD COLUMN seker REAL;
+      ALTER TABLE ogunler ADD COLUMN doymus REAL;
+      ALTER TABLE ogunler ADD COLUMN kolesterol REAL;
+      ALTER TABLE profil ADD COLUMN sodyum_hedef REAL;
+      ALTER TABLE profil ADD COLUMN potasyum_hedef REAL;
+      CREATE TABLE IF NOT EXISTS besinler (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ad TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        birim TEXT NOT NULL,
+        referans REAL NOT NULL,
+        varsayilan REAL,
+        kcal REAL NOT NULL,
+        protein REAL, karb REAL, yag REAL,
+        doymus REAL, lif REAL, seker REAL,
+        sodyum REAL, potasyum REAL, kolesterol REAL,
+        kullanim INTEGER NOT NULL DEFAULT 0,
+        son TEXT,
+        kaynak TEXT NOT NULL DEFAULT 'elle'
+      );
+    `);
+  }
   await db.execAsync(`PRAGMA user_version = ${DB_SURUM}`);
+  await kisiselVeriyiAktar(db);
+}
+
+type FatSecretVerisi = {
+  besinler: (Omit<Besin, 'id' | 'kaynak'> & Record<string, unknown>)[];
+  kayitlar: ({ tarih: string; ogun: string; ad: string; olcu: number; birim: string | null; birim_metin: string; kcal: number } & Partial<
+    Record<EkAlan | 'protein' | 'karb' | 'yag', number>
+  >)[];
+};
+
+/** src/data/kisisel/fatsecret.json içindeki yiyecek listesini ve geçmiş günlüğü bir kez içe aktarır. */
+async function kisiselVeriyiAktar(db: SQLiteDatabase) {
+  const veri = fatsecretVerisi as unknown as FatSecretVerisi;
+  if (!veri.besinler.length && !veri.kayitlar.length) return;
+  const tarihler = veri.kayitlar.map((k) => k.tarih).sort();
+  const anahtar = `ice_aktarim_fatsecret_${tarihler[0] ?? ''}_${tarihler[tarihler.length - 1] ?? ''}_${veri.kayitlar.length}`;
+  const yapildi = await db.getFirstAsync('SELECT 1 FROM ayarlar WHERE anahtar = ?', anahtar);
+  if (yapildi) return;
+
+  await db.withTransactionAsync(async () => {
+    for (const b of veri.besinler) {
+      await db.runAsync(
+        `INSERT INTO besinler (ad, birim, referans, varsayilan, kcal, protein, karb, yag, doymus, lif, seker, sodyum, potasyum, kolesterol, kullanim, son, kaynak)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fatsecret')
+         ON CONFLICT(ad) DO UPDATE SET kullanim = MAX(besinler.kullanim, excluded.kullanim)`,
+        b.ad, b.birim, b.referans, b.varsayilan ?? null, b.kcal, b.protein ?? null, b.karb ?? null, b.yag ?? null,
+        b.doymus ?? null, b.lif ?? null, b.seker ?? null, b.sodyum ?? null, b.potasyum ?? null, b.kolesterol ?? null,
+        b.kullanim ?? 0, b.son ?? null,
+      );
+    }
+    for (const k of veri.kayitlar) {
+      const ad = k.birim ? k.ad : `${k.ad} (${k.birim_metin})`;
+      await db.runAsync(
+        `INSERT INTO ogunler (tarih, ogun, yemek, gram, kcal, protein, karb, yag, sodyum, potasyum, lif, seker, doymus, kolesterol, kaynak)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fatsecret')`,
+        k.tarih, k.ogun, ad, k.birim ? k.olcu : null, k.kcal, k.protein ?? 0, k.karb ?? 0, k.yag ?? 0,
+        k.sodyum ?? null, k.potasyum ?? null, k.lif ?? null, k.seker ?? null, k.doymus ?? null, k.kolesterol ?? null,
+      );
+    }
+    await db.runAsync('INSERT INTO ayarlar (anahtar, deger) VALUES (?, ?)', anahtar, JSON.stringify({ tarih: new Date().toISOString() }));
+  });
 }
 
 // ---------- Tipler ----------
@@ -86,7 +157,29 @@ export type Profil = {
   aktivite: number;
   hedef_ayar: number;
   hedef_kilo: number | null;
+  sodyum_hedef: number | null;
+  potasyum_hedef: number | null;
 };
+
+/** Kalori ve makrolar dışındaki besin değerleri; bilinmiyorsa null. */
+export const EK_ALANLAR = ['sodyum', 'potasyum', 'lif', 'seker', 'doymus', 'kolesterol'] as const;
+export type EkAlan = (typeof EK_ALANLAR)[number];
+export type EkDegerler = Record<EkAlan, number | null>;
+
+export type Besin = {
+  id: number;
+  ad: string;
+  birim: 'g' | 'ml' | 'porsiyon';
+  referans: number;
+  varsayilan: number | null;
+  kcal: number;
+  protein: number | null;
+  karb: number | null;
+  yag: number | null;
+  kullanim: number;
+  son: string | null;
+  kaynak: string;
+} & EkDegerler;
 
 export type Ogun = {
   id: number;
@@ -99,7 +192,7 @@ export type Ogun = {
   karb: number;
   yag: number;
   kaynak: string;
-};
+} & EkDegerler;
 
 export type Olcum = {
   id: number;
@@ -155,15 +248,19 @@ export function saatStr(d: Date = new Date()): string {
 // ---------- Profil ----------
 
 export function profilGetir(db: SQLiteDatabase) {
-  return db.getFirstAsync<Profil>('SELECT boy, yas, cinsiyet, aktivite, hedef_ayar, hedef_kilo FROM profil WHERE id = 1');
+  return db.getFirstAsync<Profil>(
+    'SELECT boy, yas, cinsiyet, aktivite, hedef_ayar, hedef_kilo, sodyum_hedef, potasyum_hedef FROM profil WHERE id = 1',
+  );
 }
 
 export function profilKaydet(db: SQLiteDatabase, p: Profil) {
   return db.runAsync(
-    `INSERT INTO profil (id, boy, yas, cinsiyet, aktivite, hedef_ayar, hedef_kilo) VALUES (1, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO profil (id, boy, yas, cinsiyet, aktivite, hedef_ayar, hedef_kilo, sodyum_hedef, potasyum_hedef)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET boy = excluded.boy, yas = excluded.yas, cinsiyet = excluded.cinsiyet,
-       aktivite = excluded.aktivite, hedef_ayar = excluded.hedef_ayar, hedef_kilo = excluded.hedef_kilo`,
-    p.boy, p.yas, p.cinsiyet, p.aktivite, p.hedef_ayar, p.hedef_kilo,
+       aktivite = excluded.aktivite, hedef_ayar = excluded.hedef_ayar, hedef_kilo = excluded.hedef_kilo,
+       sodyum_hedef = excluded.sodyum_hedef, potasyum_hedef = excluded.potasyum_hedef`,
+    p.boy, p.yas, p.cinsiyet, p.aktivite, p.hedef_ayar, p.hedef_kilo, p.sodyum_hedef, p.potasyum_hedef,
   );
 }
 
@@ -173,10 +270,13 @@ export function ogunleriGetir(db: SQLiteDatabase, tarih: string) {
   return db.getAllAsync<Ogun>('SELECT * FROM ogunler WHERE tarih = ? ORDER BY id', tarih);
 }
 
-export function ogunEkle(db: SQLiteDatabase, o: Omit<Ogun, 'id'>) {
+export function ogunEkle(db: SQLiteDatabase, o: Omit<Ogun, 'id' | EkAlan> & Partial<EkDegerler>) {
   return db.runAsync(
-    'INSERT INTO ogunler (tarih, ogun, yemek, gram, kcal, protein, karb, yag, kaynak) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    o.tarih, o.ogun, o.yemek, o.gram, o.kcal, o.protein, o.karb, o.yag, o.kaynak,
+    `INSERT INTO ogunler (tarih, ogun, yemek, gram, kcal, protein, karb, yag, sodyum, potasyum, lif, seker, doymus, kolesterol, kaynak)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    o.tarih, o.ogun, o.yemek, o.gram, o.kcal, o.protein, o.karb, o.yag,
+    o.sodyum ?? null, o.potasyum ?? null, o.lif ?? null, o.seker ?? null, o.doymus ?? null, o.kolesterol ?? null,
+    o.kaynak,
   );
 }
 
@@ -184,13 +284,60 @@ export function ogunSil(db: SQLiteDatabase, id: number) {
   return db.runAsync('DELETE FROM ogunler WHERE id = ?', id);
 }
 
-export async function gunlukToplam(db: SQLiteDatabase, tarih: string) {
-  const r = await db.getFirstAsync<{ kcal: number; protein: number; karb: number; yag: number }>(
-    `SELECT COALESCE(SUM(kcal),0) kcal, COALESCE(SUM(protein),0) protein,
-            COALESCE(SUM(karb),0) karb, COALESCE(SUM(yag),0) yag FROM ogunler WHERE tarih = ?`,
+export type GunlukToplam = { kcal: number; protein: number; karb: number; yag: number; kayit: number } & Record<EkAlan, number> &
+  Record<`${EkAlan}_eksik`, number>;
+
+/** Günlük toplamlar. *_eksik: o değeri bilinmeyen kayıt sayısı (toplam eksik olabilir). */
+export async function gunlukToplam(db: SQLiteDatabase, tarih: string): Promise<GunlukToplam> {
+  const ek = EK_ALANLAR.map((a) => `COALESCE(SUM(${a}),0) ${a}, SUM(CASE WHEN ${a} IS NULL THEN 1 ELSE 0 END) ${a}_eksik`).join(', ');
+  const r = await db.getFirstAsync<GunlukToplam>(
+    `SELECT COUNT(*) kayit, COALESCE(SUM(kcal),0) kcal, COALESCE(SUM(protein),0) protein,
+            COALESCE(SUM(karb),0) karb, COALESCE(SUM(yag),0) yag, ${ek} FROM ogunler WHERE tarih = ?`,
     tarih,
   );
-  return r ?? { kcal: 0, protein: 0, karb: 0, yag: 0 };
+  return {
+    ...r!,
+    ...Object.fromEntries(EK_ALANLAR.flatMap((a) => [[a, r?.[a] ?? 0], [`${a}_eksik`, r?.[`${a}_eksik`] ?? 0]])),
+  } as GunlukToplam;
+}
+
+// ---------- Yiyeceklerim ----------
+
+export function besinAra(db: SQLiteDatabase, sorgu: string, limit = 8) {
+  const q = sorgu.trim();
+  if (!q) {
+    return db.getAllAsync<Besin>('SELECT * FROM besinler ORDER BY kullanim DESC, son DESC LIMIT ?', limit);
+  }
+  return db.getAllAsync<Besin>(
+    `SELECT * FROM besinler WHERE ad LIKE ? ORDER BY (ad LIKE ?) DESC, kullanim DESC LIMIT ?`,
+    `%${q}%`, `${q}%`, limit,
+  );
+}
+
+/** Seçilen yiyeceğin kullanım sayısını artırır. */
+export function besinKullanildi(db: SQLiteDatabase, id: number, miktar: number | null) {
+  return db.runAsync(
+    `UPDATE besinler SET kullanim = kullanim + 1, son = ?, varsayilan = COALESCE(?, varsayilan) WHERE id = ?`,
+    tarihStr(), miktar, id,
+  );
+}
+
+/** Elle girilen yiyeceği 100 g (gram verildiyse) ya da 1 porsiyon başına listeye ekler/günceller. */
+export function besinKaydet(
+  db: SQLiteDatabase,
+  b: { ad: string; gram: number | null; kcal: number; protein: number; karb: number; yag: number } & Partial<EkDegerler>,
+) {
+  const gramli = b.gram != null && b.gram > 0;
+  const k = gramli ? 100 / (b.gram as number) : 1;
+  const o = (v: number | null | undefined) => (v == null ? null : Math.round(v * k * 100) / 100);
+  return db.runAsync(
+    `INSERT INTO besinler (ad, birim, referans, varsayilan, kcal, protein, karb, yag, doymus, lif, seker, sodyum, potasyum, kolesterol, kullanim, son, kaynak)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'elle')
+     ON CONFLICT(ad) DO UPDATE SET kullanim = besinler.kullanim + 1, son = excluded.son,
+       varsayilan = COALESCE(excluded.varsayilan, besinler.varsayilan)`,
+    b.ad, gramli ? 'g' : 'porsiyon', gramli ? 100 : 1, b.gram, o(b.kcal), o(b.protein), o(b.karb), o(b.yag),
+    o(b.doymus), o(b.lif), o(b.seker), o(b.sodyum), o(b.potasyum), o(b.kolesterol), tarihStr(),
+  );
 }
 
 // ---------- Ölçümler ----------

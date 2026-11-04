@@ -127,9 +127,28 @@ export function dkMetin(dk: number): string {
   return m === 0 ? `${h} sa` : `${h} sa ${m} dk`;
 }
 
-export type BesinKalemi = { ad: string; gram: number; kcal: number; protein: number; karb: number; yag: number };
+export const EK_BESINLER = ['sodyum', 'potasyum', 'lif', 'seker', 'doymus', 'kolesterol'] as const;
+export type EkBesin = (typeof EK_BESINLER)[number];
 
-/** Tahmin edilen porsiyonun gramı değişince kalori ve makroları orantılı ölçekler. */
+export type BesinKalemi = {
+  ad: string;
+  gram: number;
+  kcal: number;
+  protein: number;
+  karb: number;
+  yag: number;
+} & Partial<Record<EkBesin, number | null>>;
+
+function ekOlcekle(kaynak: Partial<Record<EkBesin, number | null>>, k: number) {
+  const sonuc: Partial<Record<EkBesin, number | null>> = {};
+  for (const a of EK_BESINLER) {
+    const v = kaynak[a];
+    sonuc[a] = v == null ? null : yuvarla(v * k);
+  }
+  return sonuc;
+}
+
+/** Tahmin edilen porsiyonun gramı değişince kalori ve tüm besin değerlerini orantılı ölçekler. */
 export function porsiyonOlcekle(taban: BesinKalemi, yeniGram: number): BesinKalemi {
   if (!(taban.gram > 0) || !(yeniGram >= 0)) return { ...taban, gram: yeniGram };
   const k = yeniGram / taban.gram;
@@ -140,5 +159,38 @@ export function porsiyonOlcekle(taban: BesinKalemi, yeniGram: number): BesinKale
     protein: yuvarla(taban.protein * k),
     karb: yuvarla(taban.karb * k),
     yag: yuvarla(taban.yag * k),
+    ...ekOlcekle(taban, k),
+  };
+}
+
+type ReferansBesin = {
+  referans: number;
+  kcal: number;
+  protein: number | null;
+  karb: number | null;
+  yag: number | null;
+} & Partial<Record<EkBesin, number | null>>;
+
+/** Listedeki yiyecek (referans miktar başına) için verilen miktarın değerleri. */
+export function besinHesapla(b: ReferansBesin, miktar: number) {
+  const k = b.referans > 0 ? miktar / b.referans : 0;
+  return {
+    kcal: Math.round(b.kcal * k),
+    protein: yuvarla((b.protein ?? 0) * k),
+    karb: yuvarla((b.karb ?? 0) * k),
+    yag: yuvarla((b.yag ?? 0) * k),
+    ...ekOlcekle(b, k),
+  };
+}
+
+/** Günlük mikro besin hedefleri. Sodyum/kolesterol/doymuş yağ üst sınır, potasyum/lif alt hedeftir. */
+export function mikroHedefler(kalori: number | null, sodyumOzel?: number | null, potasyumOzel?: number | null) {
+  return {
+    sodyum: { deger: sodyumOzel ?? 2000, tur: 'ust' as const }, // DSÖ: < 2000 mg (≈ 5 g tuz)
+    potasyum: { deger: potasyumOzel ?? 3500, tur: 'alt' as const }, // DSÖ: ≥ 3500 mg
+    lif: { deger: 25, tur: 'alt' as const }, // DSÖ: ≥ 25 g
+    seker: { deger: kalori ? Math.round((kalori * 0.1) / 4) : 50, tur: 'ust' as const }, // serbest şeker < %10 enerji
+    doymus: { deger: kalori ? Math.round((kalori * 0.1) / 9) : 22, tur: 'ust' as const }, // < %10 enerji
+    kolesterol: { deger: 300, tur: 'ust' as const },
   };
 }
