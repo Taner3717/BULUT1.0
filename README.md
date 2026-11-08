@@ -87,6 +87,7 @@ py bulut.py --console      # simge olmadan konsolda çalıştır
 
 - `bulut.py`: Sunucu. Yalnızca Python standart kütüphanesini kullanır.
 - `bulut_windows.py`: Tepsi simgesi (`pystray`, `Pillow`), Windows bildirimi ve otomatik başlatma (`HKCU\...\Run` kaydı). Paketler yoksa Bulut konsol modunda çalışmaya devam eder.
+- `static/qrcode.js`: QR kod çizici ([qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator), MIT lisansı). Bulut'un içinde geldiği için QR kodlar internetsiz de çalışır.
 - `static/index.html`: Arayüz. Bilgisayarda kontrol paneli, telefonda gönder/indir ekranı olarak açılır.
 - Keşif: UDP **8766** portundan 3 saniyede bir yayın (broadcast) yapılır.
 - Aktarım: HTTP, TCP **8765** portu. Dosyalar parça parça akıtılır, büyük dosyalar belleği doldurmaz.

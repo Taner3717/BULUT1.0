@@ -204,7 +204,7 @@
 <div class="toast" id="toast"></div>
 <input type="file" id="filePick" multiple class="hidden">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/qrcode.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -213,6 +213,15 @@ const COLORS = ['#2f6fed','#7a5af8','#ee46bc','#f79009','#12a150','#06aed4','#d9
 function colorFor(s){ let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))>>>0; return COLORS[h%COLORS.length]; }
 function initials(n){ return n.trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || '?'; }
 function human(n){ const u=['B','KB','MB','GB','TB']; let i=0; while(n>=1024&&i<u.length-1){n/=1024;i++;} return (i?n.toFixed(1):n)+' '+u[i]; }
+// QR kodu yerel kutuphaneyle cizer (internet gerekmez)
+function drawQR(el, text){
+  el.innerHTML = '';
+  if (!window.qrcode || !text) { el.classList.add('hidden'); return; }
+  const q = qrcode(0, 'M'); q.addData(text); q.make();
+  el.innerHTML = q.createSvgTag({cellSize: 4, margin: 2, scalable: true});
+  const svg = el.querySelector('svg'); svg.style.width = svg.style.height = '132px'; svg.style.display = 'block';
+  el.classList.remove('hidden');
+}
 function store(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(e){ return null; } }
 
 let toastT;
@@ -301,16 +310,14 @@ function initLocal(){
   const urls = ME.urls.length ? ME.urls : [];
   $('#urls').innerHTML = urls.length ? urls.map(u=>`<div><code>${esc(u)}</code></div>`).join('')
     : '<span class="sub">Ağ bağlantısı bulunamadı.</span>';
-  if (urls[0] && window.QRCode) new QRCode($('#qrbox'), {text: urls[0], width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M});
+  drawQR($('#qrbox'), urls[0]);
 
   function drawQuick(path){
     // iPhone, bilgisayari adiyla (.local) bulabilir; boylece IP degisse de kestirme calisir
     const base = ME.mdns_url || urls[0] || location.origin;
     const full = base + path;
     const ipFull = urls[0] ? urls[0] + path : '';
-    $('#quickQr').innerHTML = '';
-    if (window.QRCode) new QRCode($('#quickQr'), {text: full, width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M});
-    else $('#quickQr').classList.add('hidden');
+    drawQR($('#quickQr'), full);
     $('#quickUrl').innerHTML = 'Kurulum sayfası: <code>' + esc(full) + '</code>' +
       (ipFull && ipFull !== full ? '<br>QR açılmazsa iPhone\'da bunu deneyin: <code>' + esc(ipFull) + '</code>' : '');
   }

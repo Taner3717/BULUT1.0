@@ -37,6 +37,7 @@ OFFER_PENDING_TTL = 120   # onay bekleme suresi (saniye)
 OFFER_ACCEPTED_TTL = 3600
 CHUNK = 1024 * 256
 MAX_FILES_PER_OFFER = 1000
+MAX_RECEIVED = 500         # arayuzde tutulan "alinan dosyalar" kaydi
 
 IS_WINDOWS = os.name == "nt"
 # Kestirme ile gelen dosyalarda Content-Type -> uzanti
@@ -258,7 +259,9 @@ class State:
                 names, self._quick_batch = self._quick_batch, []
             body = names[0] if len(names) == 1 else f"{len(names)} dosya"
             self.notify("iPhone'dan alındı", body, force=True)
-        threading.Timer(3, flush).start()
+        t = threading.Timer(3, flush)
+        t.daemon = True
+        t.start()
 
     def pending_count(self):
         with self.lock:
@@ -268,6 +271,11 @@ class State:
         """Arayuz acik degilse masaustu bildirimi gosterir."""
         if self.notifier and (force or time.time() - self.ui_seen > 5):
             threading.Thread(target=self.notifier, args=(title, body), daemon=True).start()
+
+    def add_received(self, item):
+        with self.lock:
+            self.received.append(item)
+            del self.received[:-MAX_RECEIVED]
 
     def cleanup(self):
         now = time.time()
@@ -320,8 +328,17 @@ def discovery_announcer(sock):
                 sock.sendto(pkt, (target, DISCOVERY_PORT))
             except OSError:
                 pass
-        STATE.cleanup()
         time.sleep(ANNOUNCE_EVERY)
+
+
+def maintenance_loop():
+    """Suresi dolan teklifleri temizler; kesif calismasa da calisir."""
+    while True:
+        try:
+            STATE.cleanup()
+        except Exception as e:
+            log("Bakim hatasi:", e)
+        time.sleep(5)
 
 
 def start_discovery():
@@ -353,6 +370,27 @@ def peer_request(peer, method, path, body=None, headers=None, timeout=10):
 # --------------------------------------------------------------------------
 # HTTP
 # --------------------------------------------------------------------------
+
+DRAIN_LIMIT = 256 * 1024 * 1024  # hata durumunda okunup atilacak en fazla govde
+
+
+class CountingReader:
+    """Istek govdesinden ne kadar okundugunu sayar (hata yanitinda kalani bosaltmak icin)."""
+
+    def __init__(self, f):
+        self.f = f
+        self.n = 0
+
+    def read(self, size=-1):
+        data = self.f.read(size)
+        self.n += len(data)
+        return data
+
+    def readline(self, size=-1):
+        data = self.f.readline(size)
+        self.n += len(data)
+        return data
+
 
 class ApiError(Exception):
     def __init__(self, status, message):
@@ -460,17 +498,45 @@ class Handler(BaseHTTPRequestHandler):
         return u.path, dict(urllib.parse.parse_qsl(u.query))
 
     def handle_api(self, fn):
+        self.rfile = CountingReader(self.rfile)
         try:
             fn()
         except ApiError as e:
             self.close_connection = True
-            self.send_json({"error": e.message}, e.status)
+            self.drain_body()
+            try:
+                self.send_json({"error": e.message}, e.status)
+            except OSError:
+                pass
         except (ConnectionError, socket.timeout, OSError) as e:
             self.close_connection = True
             try:
+                self.drain_body()
                 self.send_json({"error": f"Baglanti hatasi: {e}"}, 502)
             except Exception:
                 pass
+
+    def drain_body(self):
+        """Hata yanitindan once okunmamis govdeyi okuyup atar.
+
+        Boylece gonderen taraf 'baglanti koptu' yerine gercek hata mesajini gorur.
+        Cok buyuk govdelerde baglanti kapatilir.
+        """
+        try:
+            total = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return
+        left = total - self.rfile.n
+        if left <= 0 or left > DRAIN_LIMIT:
+            return
+        try:
+            while left > 0:
+                chunk = self.rfile.read(min(CHUNK, left))
+                if not chunk:
+                    break
+                left -= len(chunk)
+        except OSError:
+            pass
 
     # --- GET ---
     def do_GET(self):
@@ -480,6 +546,8 @@ class Handler(BaseHTTPRequestHandler):
         path, q = self.route()
         if path in ("/", "/index.html"):
             return self.serve_static("index.html", "text/html; charset=utf-8")
+        if path == "/qrcode.js":
+            return self.serve_static("qrcode.js", "application/javascript; charset=utf-8")
         if path == "/api/info":
             return self.send_json({"app": APP, "version": VERSION, "id": STATE.id,
                                    "name": STATE.name, "port": STATE.port, "os": platform.system()})
@@ -730,7 +798,12 @@ class Handler(BaseHTTPRequestHandler):
             if length != f["size"]:
                 raise ApiError(400, "Dosya boyutu teklifle uyusmuyor")
             f["busy"] = True
-        path, fh = create_unique(STATE.folder, f["name"])
+        try:
+            path, fh = create_unique(STATE.folder, f["name"])
+        except OSError as e:
+            with STATE.lock:
+                f["busy"] = False
+            raise ApiError(500, f"Kayit klasorune yazilamiyor ({STATE.folder}): {e}")
         ok = False
         try:
             with fh:
@@ -741,7 +814,7 @@ class Handler(BaseHTTPRequestHandler):
                 f["busy"] = False
                 if ok:
                     f["done"] = True
-                    STATE.received.append({"name": path.name, "path": str(path), "size": length,
+                    STATE.add_received({"name": path.name, "path": str(path), "size": length,
                                            "from": o["sender_name"], "time": time.time()})
                     if all(x["done"] for x in o["files"]):
                         o["status"] = "done"
@@ -771,7 +844,18 @@ class Handler(BaseHTTPRequestHandler):
                 chunk = self.rfile.read(min(CHUNK, remaining))
                 if not chunk:
                     raise ApiError(400, "Baglanti kesildi")
-                conn.send(chunk)
+                try:
+                    conn.send(chunk)
+                except OSError:
+                    # Karsi cihaz yuklemeyi erken reddetti: onun hata mesajini almaya calis
+                    try:
+                        resp = conn.getresponse()
+                        msg = json.loads(resp.read() or b"{}").get("error") or f"HTTP {resp.status}"
+                        raise ApiError(resp.status if resp.status >= 400 else 502, msg)
+                    except ApiError:
+                        raise
+                    except Exception:
+                        raise ApiError(502, "Karsi cihaz baglantiyi kesti")
                 remaining -= len(chunk)
             resp = conn.getresponse()
             data = resp.read()
@@ -797,7 +881,10 @@ class Handler(BaseHTTPRequestHandler):
                 name += ext
         else:
             name = f"iPhone_{time.strftime('%Y%m%d_%H%M%S')}{ext or '.bin'}"
-        path, fh = create_unique(STATE.folder, name)
+        try:
+            path, fh = create_unique(STATE.folder, name)
+        except OSError as e:
+            raise ApiError(500, f"Kayit klasorune yazilamiyor ({STATE.folder}): {e}")
         size, ok = 0, False
         try:
             with fh:
@@ -815,7 +902,7 @@ class Handler(BaseHTTPRequestHandler):
                     pass
         sender = str(q.get("from") or "iPhone")[:64]
         with STATE.lock:
-            STATE.received.append({"name": path.name, "path": str(path), "size": size,
+            STATE.add_received({"name": path.name, "path": str(path), "size": size,
                                    "from": sender, "time": time.time()})
         log(f"Kestirme ile alindi: {path.name} ({human(size)}) <- {sender} ({self.client_ip})")
         STATE.quick_received(path.name)
@@ -1017,6 +1104,7 @@ def main():
         pass
 
     STATE = State(args.port, args.name, args.folder)
+    threading.Thread(target=maintenance_loop, daemon=True).start()
     start_discovery()
     tray = setup_desktop(args, url, server)
 
