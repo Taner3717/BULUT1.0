@@ -31,6 +31,8 @@ Windows 11 için **AirDrop benzeri** yerel ağ dosya paylaşımı.
 
 > Kablolu ve kablosuz cihazlar aynı modeme bağlıysa birlikte çalışır. Misafir Wi-Fi ağları genelde ayrıdır, bu yüzden ana ağı kullanın. Cihaz listede görünmezse **+ IP ile ekle** ile adresini girin.
 
+5. İsterseniz **`kisayol_olustur.bat`**'ı çalıştırın. Masaüstüne ve Başlat menüsüne Bulut simgeli **Bulut** kısayolu eklenir.
+
 Diğer bilgisayarda da aynı adımları uygulayın. Birkaç saniye içinde iki bilgisayar birbirini "Yakındaki cihazlar" listesinde görür.
 
 ### Python'suz kullanım (tek dosya .exe)

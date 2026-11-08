@@ -165,6 +165,8 @@ def _icon_image(badge: bool):
     d.ellipse((22, 15, 46, 39), fill=w)
     d.ellipse((35, 25, 53, 43), fill=w)
     d.rounded_rectangle((13, 33, 52, 47), 7, fill=w)
+    # gonder oku
+    d.polygon([(32, 21), (24, 31), (29, 31), (29, 41), (35, 41), (35, 31), (40, 31)], fill=(36, 100, 235, 255))
     if badge:
         d.ellipse((40, 0, 63, 23), fill=(217, 45, 32, 255), outline=(255, 255, 255, 255), width=3)
     return img
