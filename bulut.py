@@ -141,6 +141,14 @@ def local_ips():
     return [ip for ip in ips if not ip.startswith("127.") and not ip.startswith("169.254.")]
 
 
+def mdns_url():
+    """iPhone'un IP degisse de bulabilecegi adres: http://bilgisayaradi.local:port"""
+    name = socket.gethostname().split(".")[0].strip().lower()
+    if not name or not all(c.isalnum() or c == "-" for c in name):
+        return None
+    return f"http://{name}.local:{STATE.port}"
+
+
 def broadcast_targets():
     targets = {"255.255.255.255"}
     for ip in local_ips():
@@ -484,6 +492,7 @@ class Handler(BaseHTTPRequestHandler):
                 "folder": str(STATE.folder) if self.is_local() else None,
                 "autostart": autostart_state() if self.is_local() else None,
                 "quick_path": f"/kestirme?t={STATE.cfg['quick_token']}" if self.is_local() else None,
+                "mdns_url": mdns_url() if self.is_local() else None,
             })
         if path.startswith("/api/offer/"):
             oid = path.rsplit("/", 1)[1]

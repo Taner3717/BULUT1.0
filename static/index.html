@@ -288,12 +288,15 @@ function initLocal(){
   if (urls[0] && window.QRCode) new QRCode($('#qrbox'), {text: urls[0], width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M});
 
   function drawQuick(path){
-    const base = urls[0] || location.origin;
+    // iPhone, bilgisayari adiyla (.local) bulabilir; boylece IP degisse de kestirme calisir
+    const base = ME.mdns_url || urls[0] || location.origin;
     const full = base + path;
+    const ipFull = urls[0] ? urls[0] + path : '';
     $('#quickQr').innerHTML = '';
     if (window.QRCode) new QRCode($('#quickQr'), {text: full, width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M});
     else $('#quickQr').classList.add('hidden');
-    $('#quickUrl').innerHTML = 'Kurulum sayfası: <code>' + esc(full) + '</code>';
+    $('#quickUrl').innerHTML = 'Kurulum sayfası: <code>' + esc(full) + '</code>' +
+      (ipFull && ipFull !== full ? '<br>QR açılmazsa iPhone\'da bunu deneyin: <code>' + esc(ipFull) + '</code>' : '');
   }
   drawQuick(ME.quick_path);
   $('#rotateQuick').onclick = async () => {

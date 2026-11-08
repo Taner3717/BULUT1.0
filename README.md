@@ -58,7 +58,7 @@ iPhone'un **AirDrop listesi yalnızca Apple cihazlarını gösterir**; Windows b
 
 Notlar:
 - Kestirme adresi gizli bir anahtar içerir; yalnızca bu adrese sahip olan cihaz onaysız gönderebilir. Adres başkasının eline geçerse **Adresi yenile** düğmesine basın. Eski kestirmeler çalışmaz hale gelir, yeniden kurmanız gerekir.
-- Bilgisayarın IP adresi değişirse kestirmedeki URL'yi güncelleyin. Kalıcı çözüm için modem ayarlarından bilgisayara sabit IP (DHCP rezervasyonu) verebilirsiniz.
+- Kurulum QR kodu bilgisayarın adını kullanır (ör. `http://desktop-xxxx.local:8765`). Böylece modem bilgisayara farklı bir IP verse bile kestirme çalışmaya devam eder. iPhone bu adı çözemezse kartta yazan IP'li adresi kullanın; o zaman IP değişince kestirmedeki URL'yi güncellemeniz gerekir.
 
 ## Kullanım
 
