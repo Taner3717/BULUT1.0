@@ -3,8 +3,7 @@
     "expo@claude-plugins-official": true,
     "superpowers@superpowers-marketplace": true,
     "supabase@claude-plugins-official": true,
-    "claude-security@claude-plugins-official": true,
-    "canva@claude-plugins-official": true
+    "claude-security@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "superpowers-marketplace": {
