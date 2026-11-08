@@ -110,6 +110,38 @@ def windows_toast(title: str, body: str, url: str) -> bool:
 
 
 # --------------------------------------------------------------------------
+# Klasor secme penceresi
+# --------------------------------------------------------------------------
+
+_PICK_PS = r"""
+Add-Type -AssemblyName System.Windows.Forms
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$owner = New-Object System.Windows.Forms.Form
+$owner.TopMost = $true
+$dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+$dlg.Description = 'Bulut: gelen dosyaların kaydedileceği klasörü seçin'
+$dlg.ShowNewFolderButton = $true
+if ($env:BULUT_INITIAL -and (Test-Path $env:BULUT_INITIAL)) { $dlg.SelectedPath = $env:BULUT_INITIAL }
+if ($dlg.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $dlg.SelectedPath }
+"""
+
+
+def pick_folder(initial: str = ""):
+    """Windows klasor secme penceresini acar; secilen yolu ya da None dondurur."""
+    if not IS_WINDOWS:
+        return None
+    encoded = base64.b64encode(_PICK_PS.encode("utf-16-le")).decode("ascii")
+    r = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass",
+         "-EncodedCommand", encoded],
+        env=dict(os.environ, BULUT_INITIAL=initial or ""),
+        creationflags=CREATE_NO_WINDOW, capture_output=True, timeout=900,
+    )
+    path = r.stdout.decode("utf-8", "replace").strip().lstrip("\ufeff")
+    return path or None
+
+
+# --------------------------------------------------------------------------
 # Tepsi simgesi
 # --------------------------------------------------------------------------
 

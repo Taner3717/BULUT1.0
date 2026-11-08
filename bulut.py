@@ -490,6 +490,7 @@ class Handler(BaseHTTPRequestHandler):
                 "urls": [f"http://{ip}:{STATE.port}" for ip in local_ips()],
                 "auto_accept": STATE.cfg["auto_accept"] if self.is_local() else None,
                 "folder": str(STATE.folder) if self.is_local() else None,
+                "can_pick_folder": IS_WINDOWS if self.is_local() else None,
                 "autostart": autostart_state() if self.is_local() else None,
                 "quick_path": f"/kestirme?t={STATE.cfg['quick_token']}" if self.is_local() else None,
                 "mdns_url": mdns_url() if self.is_local() else None,
@@ -603,7 +604,7 @@ class Handler(BaseHTTPRequestHandler):
                 if "auto_accept" in data:
                     STATE.cfg["auto_accept"] = bool(data["auto_accept"])
                 if "folder" in data and str(data["folder"]).strip():
-                    STATE.cfg["folder"] = str(data["folder"]).strip()
+                    STATE.cfg["folder"] = str(check_folder(data["folder"]))
                 STATE.save_cfg()
             if "autostart" in data:
                 if not STATE.autostart_ok:
@@ -613,7 +614,23 @@ class Handler(BaseHTTPRequestHandler):
                     bulut_windows.set_autostart(bool(data["autostart"]))
                 except OSError as e:
                     raise ApiError(500, f"Ayar degistirilemedi: {e}")
-            return self.send_json({"ok": True})
+            return self.send_json({"ok": True, "folder": str(STATE.folder)})
+        if path == "/api/pick-folder":
+            if not IS_WINDOWS:
+                raise ApiError(400, "Klasor secme penceresi yalnizca Windows'ta var; yolu elle yazin")
+            import bulut_windows
+            try:
+                chosen = bulut_windows.pick_folder(str(STATE.folder))
+            except Exception as e:
+                raise ApiError(500, f"Klasor penceresi acilamadi: {e}")
+            if not chosen:
+                return self.send_json({"ok": False, "folder": str(STATE.folder)})
+            folder = check_folder(chosen)
+            with STATE.lock:
+                STATE.cfg["folder"] = str(folder)
+                STATE.save_cfg()
+            log(f"Kayit klasoru degisti: {folder}")
+            return self.send_json({"ok": True, "folder": str(folder)})
         if path == "/api/open-folder":
             data = self.read_json()
             open_in_explorer(STATE.folder, data.get("file"))
@@ -862,6 +879,21 @@ class Handler(BaseHTTPRequestHandler):
         with STATE.lock:
             STATE.shared[sid] = {"name": name, "size": length, "path": str(path)}
         self.send_json({"ok": True, "id": sid})
+
+
+def check_folder(raw) -> Path:
+    """Kullanicinin verdigi klasoru dogrular: yoksa olusturur, yazilabilir olmali."""
+    p = Path(os.path.expandvars(os.path.expanduser(str(raw).strip().strip('"'))))
+    if not p.is_absolute():
+        raise ApiError(400, "Tam klasor yolu yazin (ör. D:\\Fotograflar)")
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+        test = p / ".bulut_yazma_testi"
+        test.write_bytes(b"")
+        test.unlink()
+    except OSError as e:
+        raise ApiError(400, f"Bu klasore yazilamiyor: {e}")
+    return p
 
 
 def open_in_explorer(folder: Path, file_path=None):

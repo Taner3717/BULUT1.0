@@ -70,6 +70,7 @@ Notlar:
 | Bilgisayardan telefona | **Telefonlara paylaş → + Dosya ekle**. Telefondaki Bulut sayfasında **İndir**'e basın. |
 | Cihaz görünmüyorsa | **+ IP ile ekle** ile diğer bilgisayarın IP adresini girin (o bilgisayarın Bulut ekranında, "Telefonla bağlan" kutusunda yazar). |
 | Kapatma | Saatin yanındaki bulut simgesine sağ tıklayın → **Çıkış**. |
+| Kayıt klasörünü değiştirme | **Alınan dosyalar** kartındaki **Klasör seç** düğmesi (veya **Elle yaz** ile yolu yazın, ör. `D:\Fotoğraflar\iPhone`). |
 | Onaysız alma | "Gelen dosyaları otomatik kabul et" kutusunu işaretleyin (sadece güvendiğiniz ağlarda). |
 
 Komut satırı seçenekleri:

@@ -154,7 +154,11 @@
       <ul class="list" id="receivedList"></ul>
       <div class="empty" id="noReceived">Henüz dosya alınmadı.</div>
       <div class="row" style="margin-top:10px;justify-content:space-between">
-        <span class="sub" id="folderPath"></span>
+        <div class="row">
+          <span class="sub">Kayıt yeri:</span> <code id="folderPath"></code>
+          <button class="small" id="pickFolder">Klasör seç</button>
+          <button class="small" id="typeFolder" title="Klasör yolunu elle yazın">Elle yaz</button>
+        </div>
         <div class="row">
           <label class="switch hidden" id="autostartWrap"><input type="checkbox" id="autostart"> Windows açılışında başlat</label>
           <label class="switch"><input type="checkbox" id="autoAccept"> Gelen dosyaları otomatik kabul et</label>
@@ -280,7 +284,19 @@ function initLocal(){
   $('#title').textContent = 'Bulut';
   $('#subtitle').textContent = `Bu cihaz: ${ME.name} · sürüm ${ME.version}`;
   $('#autoAccept').checked = !!ME.auto_accept;
-  $('#folderPath').textContent = 'Kayıt yeri: ' + ME.folder;
+  $('#folderPath').textContent = ME.folder;
+  const setFolder = f => { ME.folder = f; $('#folderPath').textContent = f; toast('Dosyalar artık buraya kaydedilecek: ' + f); };
+  if (!ME.can_pick_folder) $('#pickFolder').classList.add('hidden');
+  $('#pickFolder').onclick = async () => {
+    toast('Klasör seçme penceresi açılıyor… (görünmezse görev çubuğuna bakın)');
+    try { const r = await api('/api/pick-folder',{method:'POST',body:'{}'}); if (r.ok) setFolder(r.folder); }
+    catch(e){ toast(e.message); }
+  };
+  $('#typeFolder').onclick = async () => {
+    const f = prompt('Gelen dosyaların kaydedileceği klasör (ör. D:\\Fotoğraflar\\iPhone):', ME.folder); if (!f) return;
+    try { const r = await api('/api/config',{method:'POST',body:JSON.stringify({folder:f})}); setFolder(r.folder); }
+    catch(e){ toast(e.message); }
+  };
 
   const urls = ME.urls.length ? ME.urls : [];
   $('#urls').innerHTML = urls.length ? urls.map(u=>`<div><code>${esc(u)}</code></div>`).join('')
