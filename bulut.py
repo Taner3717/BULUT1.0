@@ -23,6 +23,7 @@ import time
 import urllib.parse
 import uuid
 import webbrowser
+from html import escape as html_escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -38,6 +39,12 @@ CHUNK = 1024 * 256
 MAX_FILES_PER_OFFER = 1000
 
 IS_WINDOWS = os.name == "nt"
+# Kestirme ile gelen dosyalarda Content-Type -> uzanti
+QUICK_EXT = {
+    "image/jpeg": ".jpg", "image/jpg": ".jpg", "image/heic": ".heic", "image/heif": ".heif",
+    "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp",
+    "video/quicktime": ".mov", "video/mp4": ".mp4", "application/pdf": ".pdf",
+}
 RESERVED_NAMES = {"CON", "PRN", "AUX", "NUL",
                   *(f"COM{i}" for i in range(1, 10)),
                   *(f"LPT{i}" for i in range(1, 10))}
@@ -161,6 +168,7 @@ class State:
         self.cfg.setdefault("name", platform.node() or "Bilgisayar")
         self.cfg.setdefault("folder", str(default_download_dir()))
         self.cfg.setdefault("auto_accept", False)
+        self.cfg.setdefault("quick_token", secrets.token_urlsafe(16))
         self.save_cfg()
 
         self.peers = {}      # id -> peer
@@ -228,6 +236,21 @@ class State:
             "files": [{"name": f["name"], "size": f["size"], "done": f["done"]} for f in o["files"]],
             "total": sum(f["size"] for f in o["files"]),
         }
+
+    def quick_received(self, name):
+        """Kestirme ile gelenleri 3 sn icinde toplayip tek bildirim gosterir."""
+        with self.lock:
+            self._quick_batch = getattr(self, "_quick_batch", [])
+            self._quick_batch.append(name)
+            if len(self._quick_batch) > 1:
+                return
+
+        def flush():
+            with self.lock:
+                names, self._quick_batch = self._quick_batch, []
+            body = names[0] if len(names) == 1 else f"{len(names)} dosya"
+            self.notify("iPhone'dan alındı", body, force=True)
+        threading.Timer(3, flush).start()
 
     def pending_count(self):
         with self.lock:
@@ -385,6 +408,36 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, "Gecersiz uzunluk")
         return n
 
+    def iter_body(self):
+        """Istek govdesini parca parca verir (Content-Length veya chunked)."""
+        if "chunked" in (self.headers.get("Transfer-Encoding") or "").lower():
+            while True:
+                line = self.rfile.readline(1024)
+                try:
+                    size = int(line.split(b";")[0].strip(), 16)
+                except ValueError:
+                    raise ApiError(400, "Gecersiz chunked govde")
+                if size == 0:
+                    while self.rfile.readline(1024) not in (b"\r\n", b"\n", b""):
+                        pass
+                    return
+                remaining = size
+                while remaining > 0:
+                    chunk = self.rfile.read(min(CHUNK, remaining))
+                    if not chunk:
+                        raise ApiError(400, "Baglanti kesildi")
+                    yield chunk
+                    remaining -= len(chunk)
+                self.rfile.readline(1024)
+        else:
+            remaining = self.content_length()
+            while remaining > 0:
+                chunk = self.rfile.read(min(CHUNK, remaining))
+                if not chunk:
+                    raise ApiError(400, "Baglanti kesildi")
+                yield chunk
+                remaining -= len(chunk)
+
     def stream_body_to(self, fh, length):
         remaining = length
         while remaining > 0:
@@ -430,6 +483,7 @@ class Handler(BaseHTTPRequestHandler):
                 "auto_accept": STATE.cfg["auto_accept"] if self.is_local() else None,
                 "folder": str(STATE.folder) if self.is_local() else None,
                 "autostart": autostart_state() if self.is_local() else None,
+                "quick_path": f"/kestirme?t={STATE.cfg['quick_token']}" if self.is_local() else None,
             })
         if path.startswith("/api/offer/"):
             oid = path.rsplit("/", 1)[1]
@@ -442,6 +496,8 @@ class Handler(BaseHTTPRequestHandler):
             with STATE.lock:
                 items = [{"id": k, "name": v["name"], "size": v["size"]} for k, v in STATE.shared.items()]
             return self.send_json({"items": items})
+        if path == "/kestirme":
+            return self.serve_shortcut_setup(q)
         if path.startswith("/dl/"):
             return self.serve_shared(path[4:])
 
@@ -519,6 +575,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.create_offer()
         if path == "/api/upload":
             return self.receive_upload(q)
+        if path == "/api/quick":
+            return self.quick_upload(q)
 
         # Yalnizca bu bilgisayardan
         self.require_local()
@@ -551,6 +609,11 @@ class Handler(BaseHTTPRequestHandler):
             data = self.read_json()
             open_in_explorer(STATE.folder, data.get("file"))
             return self.send_json({"ok": True})
+        if path == "/api/quick/rotate":
+            with STATE.lock:
+                STATE.cfg["quick_token"] = secrets.token_urlsafe(16)
+                STATE.save_cfg()
+            return self.send_json({"ok": True, "quick_path": f"/kestirme?t={STATE.cfg['quick_token']}"})
         if path == "/api/peers/add":
             return self.add_peer_manual()
         if path == "/api/share":
@@ -689,6 +752,63 @@ class Handler(BaseHTTPRequestHandler):
             return self.relay(resp.status, data)
         finally:
             conn.close()
+
+    def check_quick_token(self, q):
+        token = q.get("t", "")
+        if not token or not secrets.compare_digest(token, STATE.cfg["quick_token"]):
+            raise ApiError(403, "Gecersiz baglanti. Bulut'taki kestirme adresini yeniden kopyalayin.")
+
+    def quick_upload(self, q):
+        """iPhone Kestirmesi: tek istekte, onaysiz dosya alma (gizli anahtar ile)."""
+        self.check_quick_token(q)
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype.startswith("multipart/") or ctype == "application/x-www-form-urlencoded":
+            raise ApiError(400, "Kestirmede Istek Govdesi 'Dosya' olarak secilmeli")
+        ext = QUICK_EXT.get(ctype, "")
+        if q.get("name"):
+            name = safe_name(q["name"])
+            if ext and not os.path.splitext(name)[1]:
+                name += ext
+        else:
+            name = f"iPhone_{time.strftime('%Y%m%d_%H%M%S')}{ext or '.bin'}"
+        path, fh = create_unique(STATE.folder, name)
+        size, ok = 0, False
+        try:
+            with fh:
+                for chunk in self.iter_body():
+                    fh.write(chunk)
+                    size += len(chunk)
+            if size == 0:
+                raise ApiError(400, "Dosya bos geldi")
+            ok = True
+        finally:
+            if not ok:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        sender = str(q.get("from") or "iPhone")[:64]
+        with STATE.lock:
+            STATE.received.append({"name": path.name, "path": str(path), "size": size,
+                                   "from": sender, "time": time.time()})
+        log(f"Kestirme ile alindi: {path.name} ({human(size)}) <- {sender} ({self.client_ip})")
+        STATE.quick_received(path.name)
+        self.send_json({"ok": True, "name": path.name, "mesaj": f"Bulut: {path.name} kaydedildi"})
+
+    def serve_shortcut_setup(self, q):
+        """Telefonda acilan kurulum sayfasi: kestirme adresi + adim adim anlatim."""
+        self.check_quick_token(q)
+        host = self.headers.get("Host") or f"{(local_ips() or ['127.0.0.1'])[0]}:{STATE.port}"
+        url = f"http://{host}/api/quick?t={q['t']}"
+        page = (resource_dir() / "static" / "kestirme.html").read_text(encoding="utf-8")
+        page = page.replace("{{URL}}", html_escape(url)).replace("{{NAME}}", html_escape(STATE.name))
+        body = page.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def add_peer_manual(self):
         data = self.read_json()

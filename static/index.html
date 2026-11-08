@@ -131,6 +131,24 @@
     </div>
 
     <div class="card">
+      <h2><span class="grow">🍏 iPhone: Fotoğraflar → Paylaş → "Bulut'a Gönder"</span>
+        <button class="small" id="rotateQuick" title="Eski kestirmeler çalışmaz hale gelir">Adresi yenile</button></h2>
+      <div class="qr">
+        <div id="quickQr" style="background:#fff;padding:8px;border-radius:10px;line-height:0"></div>
+        <div style="flex:1;min-width:200px">
+          <div>iPhone'un Paylaş menüsüne <b>Bulut'a Gönder</b> eklemek için:</div>
+          <ol class="sub" style="margin:6px 0;padding-left:20px">
+            <li>Bu QR kodu iPhone kamerasıyla okutun.</li>
+            <li>Açılan sayfadaki adresi kopyalayıp adımları izleyin (bir kerelik, ~2 dk).</li>
+            <li>Sonra Fotoğraflar'da <b>Paylaş → Bulut'a Gönder</b>: onay gerekmeden buraya gelir.</li>
+          </ol>
+          <div class="sub">AirDrop listesi Apple cihazlarına özeldir; Windows orada görünemez. Bu kestirme aynı işi yapar.</div>
+          <div class="sub" id="quickUrl" style="margin-top:4px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2><span class="grow">Alınan dosyalar</span>
         <button class="small" id="openFolder">Klasörü aç</button></h2>
       <ul class="list" id="receivedList"></ul>
@@ -268,6 +286,20 @@ function initLocal(){
   $('#urls').innerHTML = urls.length ? urls.map(u=>`<div><code>${esc(u)}</code></div>`).join('')
     : '<span class="sub">Ağ bağlantısı bulunamadı.</span>';
   if (urls[0] && window.QRCode) new QRCode($('#qrbox'), {text: urls[0], width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M});
+
+  function drawQuick(path){
+    const base = urls[0] || location.origin;
+    const full = base + path;
+    $('#quickQr').innerHTML = '';
+    if (window.QRCode) new QRCode($('#quickQr'), {text: full, width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M});
+    else $('#quickQr').classList.add('hidden');
+    $('#quickUrl').innerHTML = 'Kurulum sayfası: <code>' + esc(full) + '</code>';
+  }
+  drawQuick(ME.quick_path);
+  $('#rotateQuick').onclick = async () => {
+    if (!confirm('Yeni adres oluşturulsun mu? Daha önce kurulan kestirmeler çalışmaz, yeniden kurmanız gerekir.')) return;
+    const r = await api('/api/quick/rotate',{method:'POST',body:'{}'}); drawQuick(r.quick_path); toast('Yeni adres oluşturuldu');
+  };
 
   $('#saveName').onclick = async () => {
     const n = $('#myName').value.trim(); if (!n) return;

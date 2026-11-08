@@ -7,6 +7,7 @@ Windows 11 için **AirDrop benzeri** yerel ağ dosya paylaşımı.
 - Alıcı tarafta **"Kabul et / Reddet"** penceresi çıkar (ses + bildirim).
 - **Arka planda çalışır:** Windows açılınca gizlice başlar, saatin yanında bulut simgesi durur.
 - Dosya isteği gelince **Windows bildirimi** çıkar; tıklayınca onay ekranı açılır.
+- **iPhone Fotoğraflar → Paylaş → "Bulut'a Gönder":** Bir kerelik Kestirme kurulumuyla fotoğraflar tek dokunuşla, onay beklemeden bilgisayara gelir.
 - **Telefonlar** (iPhone / Android) uygulama kurmadan, **QR kodu okutup** tarayıcıdan bilgisayara dosya gönderebilir.
 - Bilgisayardan telefona: "Telefonlara paylaş" listesine eklenen dosyalar telefondan indirilebilir.
 - İnternet gerekmez. Dosyalar doğrudan cihazlar arasında, yerel ağ üzerinden aktarılır.
@@ -47,11 +48,24 @@ Python kurulu bir bilgisayarda `exe_olustur.bat` dosyasını çalıştırın. Ol
 - Bulut klasörünü başka bir yere taşırsanız `baslat.bat`'ı bir kez yeniden çalıştırın, başlangıç kaydı yeni yere güncellenir.
 - Sorun yaşarsanız `konsol_modu.bat` ile mesajları görebilirsiniz. Günlük dosyası: `%LOCALAPPDATA%\Bulut\bulut.log`.
 
+## iPhone: Fotoğraflar'dan tek dokunuşla gönderme
+
+iPhone'un **AirDrop listesi yalnızca Apple cihazlarını gösterir**; Windows bilgisayarlar orada görünemez. Bunun yerine iPhone'un yerleşik **Kestirmeler** uygulamasıyla Paylaş menüsüne **"Bulut'a Gönder"** eklenir:
+
+1. Bilgisayardaki Bulut ekranında **🍏 iPhone** kartındaki QR kodu iPhone kamerasıyla okutun.
+2. Açılan sayfadaki adresi kopyalayın ve oradaki adımlarla kestirmeyi oluşturun. Bu bir kerelik bir işlemdir, yaklaşık 2 dakika sürer.
+3. Bundan sonra **Fotoğraflar → (bir veya çok fotoğraf seçin) → Paylaş → Bulut'a Gönder**. Fotoğraflar onay beklemeden `İndirilenler\Bulut` klasörüne gelir ve bilgisayarda bildirim çıkar.
+
+Notlar:
+- Kestirme adresi gizli bir anahtar içerir; yalnızca bu adrese sahip olan cihaz onaysız gönderebilir. Adres başkasının eline geçerse **Adresi yenile** düğmesine basın. Eski kestirmeler çalışmaz hale gelir, yeniden kurmanız gerekir.
+- Bilgisayarın IP adresi değişirse kestirmedeki URL'yi güncelleyin. Kalıcı çözüm için modem ayarlarından bilgisayara sabit IP (DHCP rezervasyonu) verebilirsiniz.
+
 ## Kullanım
 
 | İşlem | Nasıl |
 |---|---|
 | Bilgisayardan bilgisayara | "Yakındaki cihazlar"da cihaza tıklayın veya dosyaları üstüne sürükleyin. Karşı taraf kabul edince gönderim başlar. |
+| iPhone Fotoğraflar'dan | **Paylaş → Bulut'a Gönder** (bir kerelik kurulum gerekir; yukarıya bakın). |
 | Telefondan bilgisayara | Telefonla QR kodu okutun (veya ekrandaki `http://192.168.x.x:8765` adresini açın) → **Dosya seçin**. Bilgisayarda **Kabul et**'e basın. |
 | Bilgisayardan telefona | **Telefonlara paylaş → + Dosya ekle**. Telefondaki Bulut sayfasında **İndir**'e basın. |
 | Cihaz görünmüyorsa | **+ IP ile ekle** ile diğer bilgisayarın IP adresini girin (o bilgisayarın Bulut ekranında, "Telefonla bağlan" kutusunda yazar). |
