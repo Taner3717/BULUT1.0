@@ -38,20 +38,26 @@
 
   <div class="card">
     <b>2. Kestirmeyi oluşturun</b>
+    <div class="sub" style="margin:4px 0 8px">Önemli: Kestirmeyi oluştururken alttaki <b>"Bir değişikliği betimleyin"</b> kutusuna bir şey yazmayın. iPhone kestirmeyi tahmin ederek yanlış doldurur; eylemleri aşağıdaki gibi elle ekleyin.</div>
     <ol>
       <li><b class="k">Kestirmeler</b> uygulamasını açın <span class="en">(Shortcuts)</span>. Sağ üstteki <b class="k">+</b> ile yeni kestirme oluşturun. En üstteki adına dokunup <b>Bilgisayara Gönder</b> yazın.</li>
-      <li>Alttaki <b class="k">ⓘ</b> (Ayrıntılar) düğmesine dokunun ve <b class="k">Paylaşma Sayfasında Göster</b> seçeneğini açın <span class="en">(Show in Share Sheet)</span>. Üstteki <b>Bitti</b>'ye basın.</li>
-      <li>Kestirmede <b class="k">Kestirme Girdisi</b> kutusu çıkar <span class="en">(Shortcut Input)</span>. Dokunup türleri <b>Görüntüler</b> ve <b>Medya</b> olarak bırakın.</li>
-      <li>Eylem arama kutusuna <b>yinele</b> yazın ve <b class="k">Her Biri İçin Yinele</b> eylemini ekleyin <span class="en">(Repeat with Each)</span>. Girdi olarak <b>Kestirme Girdisi</b> seçili olmalı.</li>
-      <li>Arama kutusuna <b>URL</b> yazın. <b class="k">URL'nin İçeriğini Al</b> eylemini <b>Yinele'nin içine</b> sürükleyin <span class="en">(Get Contents of URL)</span>.
+      <li>iPhone kendiliğinden eylem eklediyse (ör. <b class="k">Paylaş</b>), sağındaki <b class="k">✕</b> ile silin.</li>
+      <li>Altta <b class="k">ⓘ</b> düğmesine dokunup <b class="k">Paylaşma Sayfası'nda Göster</b>'i açın, sonra <b>✓</b>'e basın. En üstte <b>"Paylaşma Sayfası giriş yüzeyinden … girişini al"</b> yazmalı; <b>Hiçbir Yer</b> yazıyorsa ona dokunup <b>Paylaşma Sayfası</b>'nı seçin.</li>
+      <li><b class="k">Arayın</b> kutusuna <b>yinele</b> yazın ve <b class="k">Her Biri İçin Yinele</b>'yi ekleyin <span class="en">(Repeat with Each)</span>. Soluk <b>Öğeler</b> yazısına dokunup <b class="k">Kestirme Girişi</b>'ni seçin.</li>
+      <li><b class="k">Arayın</b> kutusuna <b>içeriğini</b> yazın ve yeşil simgeli <b class="k">URL'nin İçeriğini Al</b>'ı ekleyin <span class="en">(Get Contents of URL)</span>. Zincir simgeli tek başına <b>URL</b> eylemi değil.
         <ul>
-          <li>URL kutusuna dokunup kopyaladığınız adresi <b>yapıştırın</b>.</li>
-          <li><b class="k">Göster</b>'e basın: Yöntem <b>POST</b>, İstek Gövdesi <b>Dosya</b> <span class="en">(Method: POST, Request Body: File)</span>.</li>
-          <li>Dosya alanına dokunup <b class="k">Yinelenen Öge</b>'yi seçin <span class="en">(Repeat Item)</span>.</li>
+          <li>Eylemi basılı tutup <b>"…her öğeyle yinele"</b> ile <b>"Yinelemeyi Bitir"</b> satırlarının <b>arasına</b> sürükleyin.</li>
+          <li>Mavi adres alanına dokunup kopyaladığınız adresi <b>yapıştırın</b>.</li>
+          <li><b class="k">›</b> okuna dokunun: Yöntem <b>POST</b>, İstek Gövdesi <b>Dosya</b>, Dosya <b class="k">Yineleme Öğesi</b> <span class="en">(Repeat Item)</span>.</li>
         </ul>
       </li>
-      <li><i>İsteğe bağlı:</i> En sona <b class="k">Bildirim Göster</b> ekleyip metne <b>Bilgisayara gönderildi ✓</b> yazın <span class="en">(Show Notification)</span>.</li>
+      <li>Sol üstteki <b>&lt;</b> ile çıkın, kestirme kaydedilir. Bildirim eklemeye gerek yok; bilgisayarda zaten bildirim çıkar.</li>
     </ol>
+    <div class="sub" style="margin-top:8px">Son hali yukarıdan aşağı:<br>
+      1. Paylaşma Sayfası … girişini al<br>
+      2. Kestirme Girişi girişinde her öğeyle yinele<br>
+      3. &nbsp;&nbsp;&nbsp;http://…/api/quick?t=… içeriğini al <i>(POST · Dosya · Yineleme Öğesi)</i><br>
+      4. Yinelemeyi Bitir</div>
   </div>
 
   <div class="card">
