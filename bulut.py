@@ -47,11 +47,20 @@ RESERVED_NAMES = {"CON", "PRN", "AUX", "NUL",
 # Yardimcilar
 # --------------------------------------------------------------------------
 
+LOG_FILE = None
+
+
 def log(*args):
     try:
-        print(*args, flush=True)
+        print(*args, flush=True)  # pythonw ile calisirken konsol yoktur
     except Exception:
         pass
+    if LOG_FILE:
+        try:
+            with open(LOG_FILE, "a", encoding="utf-8") as fh:
+                fh.write(time.strftime("%Y-%m-%d %H:%M:%S ") + " ".join(map(str, args)) + "\n")
+        except OSError:
+            pass
 
 
 def resource_dir() -> Path:
@@ -158,6 +167,9 @@ class State:
         self.offers = {}     # id -> gelen teklif
         self.received = []   # alinan dosyalar
         self.shared = {}     # id -> paylasilan dosya (telefonlar icin)
+        self.ui_seen = 0.0   # arayuzun son yoklama zamani
+        self.notifier = None  # (baslik, metin) -> masaustu bildirimi
+        self.autostart_ok = False
         self.shared_dir = data_dir() / "paylasilan"
         shutil.rmtree(self.shared_dir, ignore_errors=True)
         self.shared_dir.mkdir(parents=True, exist_ok=True)
@@ -216,6 +228,15 @@ class State:
             "files": [{"name": f["name"], "size": f["size"], "done": f["done"]} for f in o["files"]],
             "total": sum(f["size"] for f in o["files"]),
         }
+
+    def pending_count(self):
+        with self.lock:
+            return sum(1 for o in self.offers.values() if o["status"] == "pending")
+
+    def notify(self, title, body, force=False):
+        """Arayuz acik degilse masaustu bildirimi gosterir."""
+        if self.notifier and (force or time.time() - self.ui_seen > 5):
+            threading.Thread(target=self.notifier, args=(title, body), daemon=True).start()
 
     def cleanup(self):
         now = time.time()
@@ -408,6 +429,7 @@ class Handler(BaseHTTPRequestHandler):
                 "urls": [f"http://{ip}:{STATE.port}" for ip in local_ips()],
                 "auto_accept": STATE.cfg["auto_accept"] if self.is_local() else None,
                 "folder": str(STATE.folder) if self.is_local() else None,
+                "autostart": autostart_state() if self.is_local() else None,
             })
         if path.startswith("/api/offer/"):
             oid = path.rsplit("/", 1)[1]
@@ -429,6 +451,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"peers": STATE.peer_list()})
         if path == "/api/offers":
             self.require_local()
+            STATE.ui_seen = time.time()
             with STATE.lock:
                 return self.send_json({"offers": [STATE.public_offer(o) for o in STATE.offers.values()
                                                   if o["status"] in ("pending", "accepted")]})
@@ -515,6 +538,14 @@ class Handler(BaseHTTPRequestHandler):
                 if "folder" in data and str(data["folder"]).strip():
                     STATE.cfg["folder"] = str(data["folder"]).strip()
                 STATE.save_cfg()
+            if "autostart" in data:
+                if not STATE.autostart_ok:
+                    raise ApiError(400, "Otomatik baslatma bu kurulumda desteklenmiyor")
+                import bulut_windows
+                try:
+                    bulut_windows.set_autostart(bool(data["autostart"]))
+                except OSError as e:
+                    raise ApiError(500, f"Ayar degistirilemedi: {e}")
             return self.send_json({"ok": True})
         if path == "/api/open-folder":
             data = self.read_json()
@@ -571,6 +602,10 @@ class Handler(BaseHTTPRequestHandler):
             STATE.offers[oid] = offer
         total = sum(f["size"] for f in clean)
         log(f"Gelen istek: {sender} ({self.client_ip}) -> {len(clean)} dosya, {human(total)}")
+        what = clean[0]["name"] if len(clean) == 1 else f"{len(clean)} dosya"
+        if offer["status"] == "pending":
+            STATE.notify(f"{sender} dosya göndermek istiyor",
+                         f"{what} ({human(total)}) - kabul etmek için tıklayın")
         self.send_json({"offer_id": oid, "status": offer["status"]})
 
     def decide_offer(self, oid, accept):
@@ -621,6 +656,9 @@ class Handler(BaseHTTPRequestHandler):
                                            "from": o["sender_name"], "time": time.time()})
                     if all(x["done"] for x in o["files"]):
                         o["status"] = "done"
+                        n = len(o["files"])
+                        STATE.notify("Dosya alındı",
+                                     f"{o['sender_name']}: {path.name if n == 1 else f'{n} dosya'}")
             if not ok:
                 try:
                     os.remove(path)
@@ -730,8 +768,56 @@ def human(n):
         n /= 1024
 
 
+def autostart_state():
+    """Windows ile baslatma durumu; desteklenmiyorsa None."""
+    if not STATE.autostart_ok:
+        return None
+    import bulut_windows
+    return bulut_windows.autostart_enabled()
+
+
+def setup_desktop(args, url, server):
+    """Tepsi simgesi, bildirim ve otomatik baslatmayi hazirlar. Tray nesnesi veya None doner."""
+    if args.console:
+        return None
+    try:
+        import bulut_windows as bw
+    except Exception as e:
+        log("Masaustu entegrasyonu yuklenemedi:", e)
+        return None
+    if not bw.tray_available():
+        log("Tepsi simgesi icin 'pip install -r requirements.txt' gerekli; konsol modunda calisiliyor.")
+        return None
+
+    tray = bw.Tray(
+        url=url,
+        open_folder=lambda: open_in_explorer(STATE.folder),
+        pending_count=STATE.pending_count,
+        on_quit=lambda: threading.Thread(target=server.shutdown, daemon=True).start(),
+    )
+
+    def notifier(title, body):
+        if not bw.windows_toast(title, body, url):
+            tray.notify(title, body)  # yedek: klasik tepsi balonu
+    STATE.notifier = notifier
+
+    if bw.IS_WINDOWS:
+        STATE.autostart_ok = True
+        try:
+            if not STATE.cfg.get("autostart_initialized"):
+                # Ilk calistirmada varsayilan olarak Windows ile baslat
+                bw.set_autostart(True)
+                STATE.cfg["autostart_initialized"] = True
+                STATE.save_cfg()
+            elif bw.autostart_enabled():
+                bw.set_autostart(True)  # klasor tasindiysa yolu guncelle
+        except OSError as e:
+            log("Otomatik baslatma ayarlanamadi:", e)
+    return tray
+
+
 def main():
-    global STATE, DISCOVERY_PORT
+    global STATE, DISCOVERY_PORT, LOG_FILE
     if hasattr(sys.stdout, "reconfigure"):
         try:
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -744,34 +830,62 @@ def main():
     ap.add_argument("--name", help="cihaz adi")
     ap.add_argument("--folder", help="gelen dosyalarin kaydedilecegi klasor")
     ap.add_argument("--no-browser", action="store_true", help="tarayiciyi otomatik acma")
+    ap.add_argument("--background", action="store_true",
+                    help="arka planda baslat (Windows acilisinda kullanilir, tarayici acilmaz)")
+    ap.add_argument("--console", action="store_true", help="tepsi simgesi olmadan konsolda calis")
     args = ap.parse_args()
     DISCOVERY_PORT = args.discovery_port
+    url = f"http://localhost:{args.port}"
+    open_ui = not (args.no_browser or args.background)
 
     try:
         server = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     except OSError:
-        log(f"Port {args.port} kullanimda - Bulut zaten calisiyor olabilir. Arayuz aciliyor.")
-        if not args.no_browser:
-            webbrowser.open(f"http://localhost:{args.port}")
+        # Bulut zaten calisiyor: ikinci kez acilinca sadece arayuzu goster
+        log(f"Port {args.port} kullanimda - Bulut zaten calisiyor olabilir.")
+        if open_ui:
+            webbrowser.open(url)
         return
     server.daemon_threads = True
 
+    LOG_FILE = data_dir() / "bulut.log"
+    try:
+        if LOG_FILE.exists() and LOG_FILE.stat().st_size > 1024 * 1024:
+            LOG_FILE.unlink()
+    except OSError:
+        pass
+
     STATE = State(args.port, args.name, args.folder)
     start_discovery()
+    tray = setup_desktop(args, url, server)
 
     log("=" * 52)
     log(f"  Bulut {VERSION} calisiyor  -  cihaz adi: {STATE.name}")
-    log(f"  Bu bilgisayar : http://localhost:{args.port}")
+    log(f"  Bu bilgisayar : {url}")
     for ip in local_ips():
         log(f"  Telefon/diger : http://{ip}:{args.port}")
     log(f"  Gelen dosyalar: {STATE.folder}")
-    log("  Kapatmak icin bu pencereyi kapatin veya Ctrl+C")
+    if tray:
+        log("  Saatin yanindaki Bulut simgesinden acip kapatabilirsiniz")
+    else:
+        log("  Kapatmak icin bu pencereyi kapatin veya Ctrl+C")
     log("=" * 52)
 
-    if not args.no_browser:
-        threading.Timer(0.8, lambda: webbrowser.open(f"http://localhost:{args.port}")).start()
+    if open_ui:
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+
     try:
-        server.serve_forever()
+        if tray:
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            try:
+                tray.run()  # Cikis'a basilana kadar bekler
+            except Exception as e:
+                log("Tepsi simgesi baslatilamadi:", e)
+                STATE.notifier = None
+                while True:
+                    time.sleep(3600)
+        else:
+            server.serve_forever()
     except KeyboardInterrupt:
         log("Kapatiliyor...")
     finally:

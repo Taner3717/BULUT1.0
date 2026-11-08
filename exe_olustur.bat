@@ -1,8 +1,8 @@
 @echo off
 REM Python kurulu olmayan bilgisayarlar icin tek dosyalik Bulut.exe olusturur.
 cd /d "%~dp0"
-py -3 -m pip install --upgrade pyinstaller || goto :hata
-py -3 -m PyInstaller --onefile --name Bulut --add-data "static;static" bulut.py || goto :hata
+py -3 -m pip install --upgrade pyinstaller -r requirements.txt || goto :hata
+py -3 -m PyInstaller --onefile --noconsole --name Bulut --add-data "static;static" --hidden-import pystray._win32 bulut.py || goto :hata
 echo.
 echo Hazir: dist\Bulut.exe
 pause

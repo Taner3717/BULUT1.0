@@ -137,7 +137,10 @@
       <div class="empty" id="noReceived">Henüz dosya alınmadı.</div>
       <div class="row" style="margin-top:10px;justify-content:space-between">
         <span class="sub" id="folderPath"></span>
-        <label class="switch"><input type="checkbox" id="autoAccept"> Gelen dosyaları otomatik kabul et</label>
+        <div class="row">
+          <label class="switch hidden" id="autostartWrap"><input type="checkbox" id="autostart"> Windows açılışında başlat</label>
+          <label class="switch"><input type="checkbox" id="autoAccept"> Gelen dosyaları otomatik kabul et</label>
+        </div>
       </div>
     </div>
   </div>
@@ -271,6 +274,15 @@ function initLocal(){
     await api('/api/config',{method:'POST',body:JSON.stringify({name:n})});
     ME.name = n; $('#subtitle').textContent = `Bu cihaz: ${n} · sürüm ${ME.version}`; toast('Cihaz adı kaydedildi');
   };
+  if (ME.autostart !== null && ME.autostart !== undefined) {
+    $('#autostartWrap').classList.remove('hidden');
+    $('#autostart').checked = ME.autostart;
+    $('#autostart').onchange = async e => {
+      try { await api('/api/config',{method:'POST',body:JSON.stringify({autostart:e.target.checked})});
+        toast(e.target.checked ? 'Bulut Windows açılışında başlayacak' : 'Otomatik başlatma kapatıldı'); }
+      catch(err){ e.target.checked = !e.target.checked; toast(err.message); }
+    };
+  }
   $('#autoAccept').onchange = e => api('/api/config',{method:'POST',body:JSON.stringify({auto_accept:e.target.checked})});
   $('#openFolder').onclick = () => api('/api/open-folder',{method:'POST',body:'{}'});
   $('#addIpBtn').onclick = async () => {
