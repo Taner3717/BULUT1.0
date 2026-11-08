@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bulut</title>
+<style>
+  :root {
+    --bg: #f4f6fb; --card: #ffffff; --text: #18202f; --muted: #667085;
+    --line: #e3e7ef; --accent: #2f6fed; --accent-soft: #e6eefe;
+    --ok: #12a150; --bad: #d92d20; --shadow: 0 1px 2px rgba(16,24,40,.06), 0 4px 16px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1420; --card: #171e2d; --text: #e8ecf4; --muted: #98a2b3;
+      --line: #263045; --accent: #5b8cff; --accent-soft: #1d2a47;
+      --ok: #32d583; --bad: #f97066; --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .logo { width: 40px; height: 40px; border-radius: 12px; background: var(--accent); display: grid; place-items: center; }
+  .logo svg { width: 24px; height: 24px; fill: #fff; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .grow { flex: 1; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .grow { flex: 1; }
+  button, .btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    padding: 7px 14px; border-radius: 9px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  button:hover, .btn:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { color: var(--bad); }
+  button.small, .btn.small { padding: 4px 10px; font-size: 13px; }
+  input[type=text] { font: inherit; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 0; }
+  .peers { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .peer { border: 2px dashed transparent; border-radius: 14px; padding: 16px 10px; text-align: center; cursor: pointer;
+    background: var(--bg); transition: border-color .15s, transform .15s; position: relative; }
+  .peer:hover { border-color: var(--accent); }
+  .peer.drag { border-color: var(--accent); background: var(--accent-soft); transform: scale(1.03); }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 8px; display: grid; place-items: center;
+    font-weight: 600; font-size: 22px; color: #fff; position: relative; }
+  .avatar svg.ring { position: absolute; inset: -6px; width: 76px; height: 76px; transform: rotate(-90deg); }
+  .avatar svg.ring circle { fill: none; stroke-width: 4; }
+  .peer .nm { font-weight: 600; word-break: break-word; }
+  .peer .st { font-size: 12px; color: var(--muted); min-height: 18px; }
+  .peer .st.ok { color: var(--ok); } .peer .st.bad { color: var(--bad); }
+  .empty { color: var(--muted); text-align: center; padding: 20px 8px; }
+  .radar { width: 48px; height: 48px; margin: 0 auto 8px; border-radius: 50%; border: 2px solid var(--accent); opacity: .6; animation: pulse 1.8s infinite; }
+  @keyframes pulse { 0% { transform: scale(.6); opacity: .9 } 100% { transform: scale(1.4); opacity: 0 } }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .list li:first-child { border-top: 0; }
+  .list .meta { color: var(--muted); font-size: 12px; }
+  .list .name { word-break: break-all; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+  .qr { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  #qrbox { background: #fff; padding: 8px; border-radius: 10px; line-height: 0; }
+  #qrbox:empty { display: none; }
+  code { background: var(--bg); padding: 2px 6px; border-radius: 6px; font-size: 13px; word-break: break-all; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--card); border-radius: 16px; padding: 22px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  .modal h3 { margin: 0 0 6px; font-size: 18px; }
+  .modal .files { max-height: 220px; overflow: auto; margin: 12px 0; font-size: 14px; }
+  .modal .actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg);
+    padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; max-width: calc(100% - 32px); }
+  .toast.show { opacity: 1; }
+  .drop-big { border: 2px dashed var(--line); border-radius: 14px; padding: 32px 16px; text-align: center; cursor: pointer; }
+  .drop-big.drag { border-color: var(--accent); background: var(--accent-soft); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg></div>
+    <div class="grow">
+      <h1 id="title">Bulut</h1>
+      <div class="sub" id="subtitle">Yükleniyor…</div>
+    </div>
+    <div class="row hidden" id="nameEdit">
+      <input type="text" id="myName" maxlength="64" placeholder="Cihaz adı" style="width:170px">
+      <button class="small" id="saveName">Kaydet</button>
+    </div>
+  </header>
+
+  <!-- ================= BILGISAYAR (yerel) ================= -->
+  <div id="localView" class="hidden">
+    <div class="card">
+      <h2><span class="grow">Yakındaki cihazlar</span>
+        <button class="small" id="addIpBtn">+ IP ile ekle</button></h2>
+      <div class="peers" id="peers"></div>
+      <div class="empty" id="noPeers">
+        <div class="radar"></div>
+        Aynı ağdaki Bulut çalışan bilgisayarlar aranıyor…<br>
+        <span class="sub">Bulamazsa diğer bilgisayarda da Bulut'u açın ve Windows ağ profilinin "Özel" olduğundan emin olun.</span>
+      </div>
+      <div class="sub" style="margin-top:10px">Bir cihaza tıklayın ya da dosyaları üstüne sürükleyin.</div>
+    </div>
+
+    <div class="cols">
+      <div class="card">
+        <h2>📱 Telefonla bağlan</h2>
+        <div class="qr">
+          <div id="qrbox"></div>
+          <div style="flex:1;min-width:180px">
+            <div class="sub">Telefonunuz aynı Wi-Fi'deyken kamerayla QR kodu okutun veya adresi tarayıcıya yazın:</div>
+            <div id="urls" style="margin-top:6px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="grow">Telefonlara paylaş</span>
+          <button class="small" id="shareBtn">+ Dosya ekle</button></h2>
+        <ul class="list" id="sharedList"></ul>
+        <div class="empty" id="noShared">Telefondan indirilebilecek dosya yok.</div>
+        <div class="bar hidden" id="shareBar"><div></div></div>
+        <div class="sub">Bu listedeki dosyaları ağdaki herkes indirebilir.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="grow">Alınan dosyalar</span>
+        <button class="small" id="openFolder">Klasörü aç</button></h2>
+      <ul class="list" id="receivedList"></ul>
+      <div class="empty" id="noReceived">Henüz dosya alınmadı.</div>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <span class="sub" id="folderPath"></span>
+        <label class="switch"><input type="checkbox" id="autoAccept"> Gelen dosyaları otomatik kabul et</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TELEFON / UZAK ================= -->
+  <div id="remoteView" class="hidden">
+    <div class="card">
+      <h2 id="sendTitle">Bilgisayara gönder</h2>
+      <div class="row" style="margin-bottom:12px">
+        <span class="sub">Adınız:</span>
+        <input type="text" id="senderName" maxlength="64" placeholder="ör. Taner'in iPhone'u" style="flex:1">
+      </div>
+      <div class="drop-big" id="dropBig">
+        <div style="font-size:32px">⬆️</div>
+        <b>Dosya seçin</b><div class="sub">Fotoğraf, video, belge…</div>
+      </div>
+      <div class="sub" id="remoteStatus" style="margin-top:10px"></div>
+      <div class="bar hidden" id="remoteBar"><div></div></div>
+    </div>
+    <div class="card">
+      <h2>Bu bilgisayarın paylaştıkları</h2>
+      <ul class="list" id="remoteShared"></ul>
+      <div class="empty" id="noRemoteShared">Paylaşılan dosya yok.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="offerModal">
+  <div class="modal">
+    <h3 id="offerTitle"></h3>
+    <div class="sub" id="offerSub"></div>
+    <div class="files" id="offerFiles"></div>
+    <div class="actions">
+      <button class="danger" id="declineBtn">Reddet</button>
+      <button class="primary" id="acceptBtn">Kabul et</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="filePick" multiple class="hidden">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const COLORS = ['#2f6fed','#7a5af8','#ee46bc','#f79009','#12a150','#06aed4','#d92d20','#6172f3'];
+function colorFor(s){ let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))>>>0; return COLORS[h%COLORS.length]; }
+function initials(n){ return n.trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || '?'; }
+function human(n){ const u=['B','KB','MB','GB','TB']; let i=0; while(n>=1024&&i<u.length-1){n/=1024;i++;} return (i?n.toFixed(1):n)+' '+u[i]; }
+function store(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(e){ return null; } }
+
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3500); }
+
+async function api(url, opts={}){
+  opts.headers = Object.assign({'X-Bulut':'1'}, opts.body && typeof opts.body==='string' ? {'Content-Type':'application/json'} : {}, opts.headers||{});
+  const r = await fetch(url, opts);
+  let data = {}; try { data = await r.json(); } catch(e) {}
+  if (!r.ok) throw new Error(data.error || ('HTTP '+r.status));
+  return data;
+}
+function upload(url, file, onProgress){
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open('POST', url);
+    x.setRequestHeader('X-Bulut','1');
+    x.setRequestHeader('Content-Type','application/octet-stream');
+    x.upload.onprogress = e => e.lengthComputable && onProgress(e.loaded);
+    x.onload = () => { let d={}; try{d=JSON.parse(x.responseText)}catch(e){}
+      x.status<300 ? resolve(d) : reject(new Error(d.error||('HTTP '+x.status))); };
+    x.onerror = () => reject(new Error('Bağlantı koptu'));
+    x.send(file);
+  });
+}
+
+// Ortak gonderme akisi: teklif -> onay bekle -> dosyalari yukle
+async function sendFlow(files, ep, ui){
+  files = Array.from(files); if (!files.length) return;
+  const total = files.reduce((a,f)=>a+f.size,0);
+  ui('wait', 0, 'Onay bekleniyor…');
+  let offer;
+  try { offer = await ep.offer(files.map(f=>({name:f.name,size:f.size}))); }
+  catch(e){ ui('bad', 0, e.message); return; }
+  let status = offer.status;
+  while (status === 'pending') {
+    await sleep(1000);
+    try { status = (await ep.status(offer.offer_id)).status; } catch(e){ ui('bad',0,e.message); return; }
+  }
+  if (status === 'declined') { ui('bad',0,'Reddedildi'); return; }
+  if (status === 'expired') { ui('bad',0,'Yanıt verilmedi'); return; }
+  let sent = 0;
+  for (let i=0;i<files.length;i++){
+    try {
+      await upload(ep.upload(offer.offer_id,i), files[i], loaded => {
+        const pct = total ? (sent+loaded)/total : 1;
+        ui('send', pct, `Gönderiliyor %${Math.floor(pct*100)}`);
+      });
+    } catch(e){ ui('bad', sent/total, e.message); return; }
+    sent += files[i].size;
+  }
+  ui('ok', 1, `Gönderildi ✓ (${files.length} dosya, ${human(total)})`);
+}
+
+let ME = null;
+(async function init(){
+  ME = await api('/api/whoami');
+  if (ME.local) initLocal(); else initRemote();
+})().catch(e => { $('#subtitle').textContent = 'Bulut sunucusuna ulaşılamadı: ' + e.message; });
+
+// ===================== BILGISAYAR =====================
+const peerUi = {};   // peer id -> {cls, pct, text}
+let pickTarget = null;
+
+function initLocal(){
+  $('#localView').classList.remove('hidden');
+  $('#nameEdit').classList.remove('hidden');
+  $('#myName').value = ME.name;
+  $('#title').textContent = 'Bulut';
+  $('#subtitle').textContent = `Bu cihaz: ${ME.name} · sürüm ${ME.version}`;
+  $('#autoAccept').checked = !!ME.auto_accept;
+  $('#folderPath').textContent = 'Kayıt yeri: ' + ME.folder;
+
+  const urls = ME.urls.length ? ME.urls : [];
+  $('#urls').innerHTML = urls.length ? urls.map(u=>`<div><code>${esc(u)}</code></div>`).join('')
+    : '<span class="sub">Ağ bağlantısı bulunamadı.</span>';
+  if (urls[0] && window.QRCode) new QRCode($('#qrbox'), {text: urls[0], width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M});
+
+  $('#saveName').onclick = async () => {
+    const n = $('#myName').value.trim(); if (!n) return;
+    await api('/api/config',{method:'POST',body:JSON.stringify({name:n})});
+    ME.name = n; $('#subtitle').textContent = `Bu cihaz: ${n} · sürüm ${ME.version}`; toast('Cihaz adı kaydedildi');
+  };
+  $('#autoAccept').onchange = e => api('/api/config',{method:'POST',body:JSON.stringify({auto_accept:e.target.checked})});
+  $('#openFolder').onclick = () => api('/api/open-folder',{method:'POST',body:'{}'});
+  $('#addIpBtn').onclick = async () => {
+    const ip = prompt('Diğer bilgisayarın IP adresi (ör. 192.168.1.25):'); if (!ip) return;
+    try { const r = await api('/api/peers/add',{method:'POST',body:JSON.stringify({ip})}); toast(r.name+' eklendi'); refreshPeers(); }
+    catch(e){ toast(e.message); }
+  };
+  $('#shareBtn').onclick = () => { pickTarget = 'share'; $('#filePick').click(); };
+  $('#filePick').onchange = e => {
+    const files = Array.from(e.target.files); e.target.value = '';
+    if (pickTarget === 'share') shareFiles(files);
+    else if (pickTarget) sendToPeer(pickTarget, files);
+  };
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    document.addEventListener('click', () => Notification.requestPermission(), {once:true});
+  }
+
+  refreshPeers(); setInterval(refreshPeers, 2000);
+  pollOffers(); setInterval(pollOffers, 1500);
+  refreshReceived(); setInterval(refreshReceived, 3000);
+  refreshShared();
+}
+
+let lastPeers = '';
+async function refreshPeers(){
+  let peers; try { peers = (await api('/api/peers')).peers; } catch(e){ return; }
+  const key = JSON.stringify(peers.map(p=>[p.id,p.name]));
+  $('#noPeers').classList.toggle('hidden', peers.length>0);
+  if (key === lastPeers) return; lastPeers = key;
+  const box = $('#peers'); box.innerHTML = '';
+  for (const p of peers) {
+    const el = document.createElement('div');
+    el.className = 'peer'; el.dataset.id = p.id;
+    el.innerHTML = `<div class="avatar" style="background:${colorFor(p.id)}">${esc(initials(p.name))}
+        <svg class="ring" viewBox="0 0 76 76"><circle cx="38" cy="38" r="35" stroke="transparent"/><circle class="prog" cx="38" cy="38" r="35" stroke="var(--accent)" stroke-dasharray="220" stroke-dashoffset="220"/></svg></div>
+      <div class="nm">${esc(p.name)}</div><div class="st"></div>`;
+    el.title = p.ip;
+    el.onclick = () => { pickTarget = p.id; $('#filePick').click(); };
+    el.ondragover = e => { e.preventDefault(); el.classList.add('drag'); };
+    el.ondragleave = () => el.classList.remove('drag');
+    el.ondrop = e => { e.preventDefault(); el.classList.remove('drag'); sendToPeer(p.id, e.dataTransfer.files); };
+    box.appendChild(el);
+    paintPeer(p.id);
+  }
+}
+function paintPeer(id){
+  const el = document.querySelector(`.peer[data-id="${CSS.escape(id)}"]`); const s = peerUi[id];
+  if (!el) return;
+  const st = el.querySelector('.st'); const prog = el.querySelector('.prog');
+  st.className = 'st' + (s && s.cls==='ok' ? ' ok' : s && s.cls==='bad' ? ' bad' : '');
+  st.textContent = s ? s.text : '';
+  prog.setAttribute('stroke-dashoffset', 220 - 220*(s ? s.pct : 0));
+  prog.setAttribute('stroke', s && s.cls==='bad' ? 'var(--bad)' : s && s.cls==='ok' ? 'var(--ok)' : 'var(--accent)');
+}
+function sendToPeer(pid, files){
+  if (peerUi[pid] && ['wait','send'].includes(peerUi[pid].cls)) { toast('Bu cihaza zaten gönderim yapılıyor'); return; }
+  const q = (o,i) => `peer=${encodeURIComponent(pid)}&offer=${encodeURIComponent(o)}` + (i!==undefined?`&i=${i}`:'');
+  sendFlow(files, {
+    offer: files => api('/api/send/offer',{method:'POST',body:JSON.stringify({peer_id:pid, files})}),
+    status: o => api('/api/send/status?'+q(o)),
+    upload: (o,i) => '/api/send/upload?'+q(o,i),
+  }, (cls,pct,text) => {
+    peerUi[pid] = {cls,pct,text}; paintPeer(pid);
+    if (cls==='ok' || cls==='bad') setTimeout(()=>{ if (peerUi[pid] && peerUi[pid].text===text){ delete peerUi[pid]; paintPeer(pid);} }, 6000);
+  });
+}
+
+// --- gelen istekler ---
+const seenOffers = new Set(); let queue = [], current = null;
+async function pollOffers(){
+  let offers; try { offers = (await api('/api/offers')).offers; } catch(e){ return; }
+  for (const o of offers) {
+    if (seenOffers.has(o.id)) continue; seenOffers.add(o.id);
+    if (o.status === 'pending') { queue.push(o); notify(o); }
+  }
+  if (current && !offers.find(o=>o.id===current.id && o.status==='pending')) closeOffer();
+  if (!current && queue.length) showOffer(queue.shift());
+}
+function notify(o){
+  beep();
+  document.title = '📥 ' + o.sender_name + ' - Bulut';
+  if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+    const n = new Notification('Bulut: ' + o.sender_name, {body: `${o.files.length} dosya göndermek istiyor (${human(o.total)})`});
+    n.onclick = () => { window.focus(); n.close(); };
+  }
+}
+function beep(){ try { const c=new AudioContext(), o=c.createOscillator(), g=c.createGain(); o.connect(g); g.connect(c.destination);
+  o.frequency.value=880; g.gain.setValueAtTime(.15,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4); o.start(); o.stop(c.currentTime+.4);} catch(e){} }
+function showOffer(o){
+  current = o;
+  $('#offerTitle').textContent = `${o.sender_name} dosya göndermek istiyor`;
+  $('#offerSub').textContent = `${o.files.length} dosya · ${human(o.total)} · ${o.sender_ip}`;
+  $('#offerFiles').innerHTML = o.files.map(f=>`<div>📄 ${esc(f.name)} <span class="sub">(${human(f.size)})</span></div>`).join('');
+  $('#offerModal').classList.add('show');
+}
+function closeOffer(){ current = null; $('#offerModal').classList.remove('show'); document.title = 'Bulut';
+  if (queue.length) showOffer(queue.shift()); }
+async function decide(accept){
+  if (!current) return; const id = current.id;
+  try { await api(`/api/offers/${encodeURIComponent(id)}/${accept?'accept':'decline'}`,{method:'POST',body:'{}'}); toast(accept?'Kabul edildi, dosyalar alınıyor…':'Reddedildi'); }
+  catch(e){ toast(e.message); }
+  closeOffer();
+}
+$('#acceptBtn').onclick = () => decide(true);
+$('#declineBtn').onclick = () => decide(false);
+
+let lastRecv = '';
+async function refreshReceived(){
+  let items; try { items = (await api('/api/received')).items; } catch(e){ return; }
+  const key = items.map(i=>i.path+i.time).join('|'); if (key===lastRecv) return;
+  if (lastRecv && items.length) toast(`Alındı: ${items[0].name}`);
+  lastRecv = key;
+  $('#noReceived').classList.toggle('hidden', items.length>0);
+  $('#receivedList').innerHTML = items.map((it,i)=>`<li><div style="flex:1;min-width:0"><div class="name">${esc(it.name)}</div>
+    <div class="meta">${human(it.size)} · ${esc(it.from)} · ${new Date(it.time*1000).toLocaleTimeString('tr-TR')}</div></div>
+    <button class="small" data-i="${i}">Göster</button></li>`).join('');
+  $('#receivedList').querySelectorAll('button').forEach(b => b.onclick = () =>
+    api('/api/open-folder',{method:'POST',body:JSON.stringify({file:items[+b.dataset.i].path})}));
+}
+
+async function refreshShared(){
+  const items = (await api('/api/shared')).items;
+  $('#noShared').classList.toggle('hidden', items.length>0);
+  $('#sharedList').innerHTML = items.map(it=>`<li><div style="flex:1;min-width:0"><div class="name">${esc(it.name)}</div><div class="meta">${human(it.size)}</div></div>
+    <button class="small danger" data-id="${esc(it.id)}">Kaldır</button></li>`).join('');
+  $('#sharedList').querySelectorAll('button').forEach(b => b.onclick = async () => {
+    await api(`/api/share/${encodeURIComponent(b.dataset.id)}/delete`,{method:'POST',body:'{}'}); refreshShared(); });
+}
+async function shareFiles(files){
+  const bar = $('#shareBar'); bar.classList.remove('hidden');
+  const total = files.reduce((a,f)=>a+f.size,0) || 1; let done = 0;
+  try {
+    for (const f of files) {
+      await upload('/api/share?name='+encodeURIComponent(f.name), f, l => bar.firstElementChild.style.width = ((done+l)/total*100)+'%');
+      done += f.size; refreshShared();
+    }
+    toast('Paylaşıma eklendi');
+  } catch(e){ toast(e.message); }
+  bar.classList.add('hidden'); bar.firstElementChild.style.width = '0';
+}
+
+// ===================== TELEFON =====================
+function initRemote(){
+  $('#remoteView').classList.remove('hidden');
+  $('#title').textContent = ME.name;
+  $('#subtitle').textContent = 'Bulut ile bağlandınız';
+  $('#sendTitle').textContent = `${ME.name} bilgisayarına gönder`;
+  const guess = /iPhone/.test(navigator.userAgent) ? 'iPhone' : /iPad/.test(navigator.userAgent) ? 'iPad' : /Android/.test(navigator.userAgent) ? 'Android telefon' : 'Tarayıcı';
+  $('#senderName').value = store('bulut-name') || guess;
+  $('#senderName').onchange = e => store('bulut-name', e.target.value.trim());
+
+  const drop = $('#dropBig'); let busy = false;
+  drop.onclick = () => !busy && $('#filePick').click();
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('drag'); };
+  drop.ondragleave = () => drop.classList.remove('drag');
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove('drag'); go(e.dataTransfer.files); };
+  $('#filePick').onchange = e => { const f = Array.from(e.target.files); e.target.value=''; go(f); };
+
+  async function go(files){
+    if (busy || !files.length) return; busy = true;
+    const bar = $('#remoteBar'); bar.classList.remove('hidden');
+    const name = $('#senderName').value.trim() || guess;
+    await sendFlow(files, {
+      offer: f => api('/api/offer',{method:'POST',body:JSON.stringify({sender_name:name, files:f})}),
+      status: o => api('/api/offer/'+encodeURIComponent(o)),
+      upload: (o,i) => `/api/upload?offer=${encodeURIComponent(o)}&i=${i}`,
+    }, (cls,pct,text) => {
+      $('#remoteStatus').textContent = cls==='wait' ? `${text} Bilgisayarda "Kabul et"e basılmalı.` : text;
+      $('#remoteStatus').style.color = cls==='bad' ? 'var(--bad)' : cls==='ok' ? 'var(--ok)' : '';
+      bar.firstElementChild.style.width = (pct*100)+'%';
+    });
+    busy = false;
+  }
+
+  async function shared(){
+    try {
+      const items = (await api('/api/shared')).items;
+      $('#noRemoteShared').classList.toggle('hidden', items.length>0);
+      $('#remoteShared').innerHTML = items.map(it=>`<li><div style="flex:1;min-width:0"><div class="name">${esc(it.name)}</div><div class="meta">${human(it.size)}</div></div>
+        <a class="btn small" href="/dl/${encodeURIComponent(it.id)}" download>İndir</a></li>`).join('');
+    } catch(e){}
+  }
+  shared(); setInterval(shared, 4000);
+}
+</script>
+</body>
+</html>
