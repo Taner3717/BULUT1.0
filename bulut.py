@@ -38,6 +38,8 @@ OFFER_ACCEPTED_TTL = 3600
 CHUNK = 1024 * 256
 MAX_FILES_PER_OFFER = 1000
 MAX_RECEIVED = 500         # arayuzde tutulan "alinan dosyalar" kaydi
+MAX_PENDING_PER_IP = 3     # ayni cihazdan ayni anda bekleyen en fazla istek
+MAX_PENDING_TOTAL = 20     # toplam bekleyen istek siniri
 
 IS_WINDOWS = os.name == "nt"
 # Kestirme ile gelen dosyalarda Content-Type -> uzanti
@@ -123,6 +125,60 @@ def create_unique(folder: Path, name: str):
                 i += 1
 
 
+def heic_supported() -> bool:
+    """HEIC -> JPG donusturme icin pillow-heif kurulu mu?"""
+    try:
+        import pillow_heif  # noqa: F401
+        from PIL import Image  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def convert_heic(path: Path) -> Path:
+    """iPhone HEIC fotografini JPG'ye cevirir; basarisizsa orijinali dondurur.
+
+    pillow-heif goruntuyu acarken dondurmeyi (irot) uygular ve EXIF yonunu sifirlar,
+    bu yuzden JPG dogru yonde kaydedilir. EXIF (tarih, konum vb.) korunur.
+    """
+    if path.suffix.lower() not in (".heic", ".heif"):
+        return path
+    try:
+        from PIL import Image
+        import pillow_heif
+        pillow_heif.register_heif_opener()
+        with Image.open(path) as img:
+            exif = img.info.get("exif")
+            rgb = img.convert("RGB")
+        target, fh = create_unique(path.parent, path.with_suffix(".jpg").name)
+        with fh:
+            kwargs = {"quality": 92, "optimize": True}
+            if exif:
+                kwargs["exif"] = exif
+            rgb.save(fh, "JPEG", **kwargs)
+        try:
+            os.utime(target, (path.stat().st_atime, path.stat().st_mtime))
+        except OSError:
+            pass
+        path.unlink()
+        return target
+    except Exception as e:
+        log(f"HEIC donusturulemedi ({path.name}): {e}")
+        try:
+            if "target" in locals() and Path(target).exists() and path.exists():
+                Path(target).unlink()
+        except OSError:
+            pass
+        return path
+
+
+def file_size(path: Path, default: int = 0) -> int:
+    try:
+        return path.stat().st_size
+    except OSError:
+        return default
+
+
 def local_ips():
     ips = []
     try:
@@ -178,6 +234,8 @@ class State:
         self.cfg.setdefault("folder", str(default_download_dir()))
         self.cfg.setdefault("auto_accept", False)
         self.cfg.setdefault("quick_token", secrets.token_urlsafe(16))
+        self.cfg.setdefault("monthly_folders", False)
+        self.cfg.setdefault("heic_to_jpg", False)
         self.save_cfg()
 
         self.peers = {}      # id -> peer
@@ -214,6 +272,18 @@ class State:
     @property
     def folder(self) -> Path:
         return Path(self.cfg["folder"])
+
+    def target_folder(self) -> Path:
+        """Gelen dosyanin yazilacagi klasor (istenirse aylik alt klasor: 2026-11)."""
+        if self.cfg.get("monthly_folders"):
+            return self.folder / time.strftime("%Y-%m")
+        return self.folder
+
+    def after_receive(self, path: Path) -> Path:
+        """Dosya tamamen alindiktan sonra: istenirse HEIC -> JPG."""
+        if self.cfg.get("heic_to_jpg"):
+            return convert_heic(path)
+        return path
 
     # --- esler ---
     def upsert_peer(self, pid, name, ip, port, os_name="", manual=False):
@@ -559,6 +629,9 @@ class Handler(BaseHTTPRequestHandler):
                 "auto_accept": STATE.cfg["auto_accept"] if self.is_local() else None,
                 "folder": str(STATE.folder) if self.is_local() else None,
                 "can_pick_folder": IS_WINDOWS if self.is_local() else None,
+                "monthly_folders": STATE.cfg.get("monthly_folders") if self.is_local() else None,
+                "heic_to_jpg": STATE.cfg.get("heic_to_jpg") if self.is_local() else None,
+                "heic_supported": heic_supported() if self.is_local() else None,
                 "autostart": autostart_state() if self.is_local() else None,
                 "quick_path": f"/kestirme?t={STATE.cfg['quick_token']}" if self.is_local() else None,
                 "mdns_url": mdns_url() if self.is_local() else None,
@@ -671,6 +744,12 @@ class Handler(BaseHTTPRequestHandler):
                         STATE.cfg["name"] = name
                 if "auto_accept" in data:
                     STATE.cfg["auto_accept"] = bool(data["auto_accept"])
+                if "monthly_folders" in data:
+                    STATE.cfg["monthly_folders"] = bool(data["monthly_folders"])
+                if "heic_to_jpg" in data:
+                    if data["heic_to_jpg"] and not heic_supported():
+                        raise ApiError(400, "HEIC donusturme icin 'pillow-heif' paketi gerekli; baslat.bat'i yeniden calistirin")
+                    STATE.cfg["heic_to_jpg"] = bool(data["heic_to_jpg"])
                 if "folder" in data and str(data["folder"]).strip():
                     STATE.cfg["folder"] = str(check_folder(data["folder"]))
                 STATE.save_cfg()
@@ -750,6 +829,11 @@ class Handler(BaseHTTPRequestHandler):
             clean.append({"name": safe_name(f.get("name", "dosya")), "size": size,
                           "done": False, "busy": False})
         sender = str(data.get("sender_name") or "Bilinmeyen cihaz").strip()[:64] or "Bilinmeyen cihaz"
+        with STATE.lock:
+            pending = [o for o in STATE.offers.values() if o["status"] == "pending"]
+            if len(pending) >= MAX_PENDING_TOTAL or \
+                    sum(1 for o in pending if o["sender_ip"] == self.client_ip) >= MAX_PENDING_PER_IP:
+                raise ApiError(429, "Cok fazla bekleyen istek var. Bilgisayardaki istekler yanitlaninca tekrar deneyin.")
         oid = secrets.token_urlsafe(18)
         offer = {"id": oid, "status": "pending", "sender_name": sender,
                  "sender_ip": self.client_ip, "created": time.time(), "files": clean}
@@ -799,7 +883,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ApiError(400, "Dosya boyutu teklifle uyusmuyor")
             f["busy"] = True
         try:
-            path, fh = create_unique(STATE.folder, f["name"])
+            path, fh = create_unique(STATE.target_folder(), f["name"])
         except OSError as e:
             with STATE.lock:
                 f["busy"] = False
@@ -808,13 +892,14 @@ class Handler(BaseHTTPRequestHandler):
         try:
             with fh:
                 self.stream_body_to(fh, length)
+            path = STATE.after_receive(path)
             ok = True
         finally:
             with STATE.lock:
                 f["busy"] = False
                 if ok:
                     f["done"] = True
-                    STATE.add_received({"name": path.name, "path": str(path), "size": length,
+                    STATE.add_received({"name": path.name, "path": str(path), "size": file_size(path, length),
                                            "from": o["sender_name"], "time": time.time()})
                     if all(x["done"] for x in o["files"]):
                         o["status"] = "done"
@@ -882,7 +967,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             name = f"iPhone_{time.strftime('%Y%m%d_%H%M%S')}{ext or '.bin'}"
         try:
-            path, fh = create_unique(STATE.folder, name)
+            path, fh = create_unique(STATE.target_folder(), name)
         except OSError as e:
             raise ApiError(500, f"Kayit klasorune yazilamiyor ({STATE.folder}): {e}")
         size, ok = 0, False
@@ -893,6 +978,8 @@ class Handler(BaseHTTPRequestHandler):
                     size += len(chunk)
             if size == 0:
                 raise ApiError(400, "Dosya bos geldi")
+            path = STATE.after_receive(path)
+            size = path.stat().st_size
             ok = True
         finally:
             if not ok:

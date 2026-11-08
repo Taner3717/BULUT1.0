@@ -18,10 +18,15 @@ pause
 exit /b 1
 
 :python_var
-%PY% -c "import pystray, PIL" >nul 2>&1
+%PY% -c "import pystray, PIL, pillow_heif" >nul 2>&1
 if %errorlevel%==0 goto :baslat
-echo Ilk kurulum: gerekli paketler yukleniyor (pystray, Pillow)...
+echo Ilk kurulum: gerekli paketler yukleniyor (pystray, Pillow, pillow-heif)...
 %PY% -m pip install --user -r requirements.txt
+if not %errorlevel%==0 (
+    REM pillow-heif istege bagli: kurulamazsa yalnizca HEIC->JPG ozelligi kapali kalir
+    %PY% -m pip install --user pystray Pillow
+)
+%PY% -c "import pystray, PIL" >nul 2>&1
 if not %errorlevel%==0 (
     echo Paketler kurulamadi. Bulut konsol modunda acilacak.
     %PY% bulut.py --console %*

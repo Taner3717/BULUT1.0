@@ -163,6 +163,10 @@
           <label class="switch hidden" id="autostartWrap"><input type="checkbox" id="autostart"> Windows açılışında başlat</label>
           <label class="switch"><input type="checkbox" id="autoAccept"> Gelen dosyaları otomatik kabul et</label>
         </div>
+        <div class="row">
+          <label class="switch" title="Ör. Bulut\2026-11"><input type="checkbox" id="monthly"> Aylara göre klasörle</label>
+          <label class="switch" id="heicWrap"><input type="checkbox" id="heic"> iPhone fotoğraflarını (HEIC) JPG'ye çevir</label>
+        </div>
       </div>
     </div>
   </div>
@@ -341,6 +345,17 @@ function initLocal(){
       catch(err){ e.target.checked = !e.target.checked; toast(err.message); }
     };
   }
+  const cfgToggle = (id, key, onMsg, offMsg) => {
+    $(id).onchange = async e => {
+      try { await api('/api/config',{method:'POST',body:JSON.stringify({[key]: e.target.checked})}); toast(e.target.checked ? onMsg : offMsg); }
+      catch(err){ e.target.checked = !e.target.checked; toast(err.message); }
+    };
+  };
+  $('#monthly').checked = !!ME.monthly_folders;
+  cfgToggle('#monthly', 'monthly_folders', 'Yeni dosyalar aylık klasörlere ayrılacak', 'Aylık klasörleme kapatıldı');
+  $('#heic').checked = !!ME.heic_to_jpg;
+  if (!ME.heic_supported) { $('#heic').disabled = true; $('#heicWrap').title = "Bu özellik için 'pillow-heif' paketi gerekli (baslat.bat'i yeniden çalıştırın)"; $('#heicWrap').style.opacity = .55; }
+  cfgToggle('#heic', 'heic_to_jpg', 'HEIC fotoğraflar JPG olarak kaydedilecek', 'HEIC fotoğraflar olduğu gibi kaydedilecek');
   $('#autoAccept').onchange = e => api('/api/config',{method:'POST',body:JSON.stringify({auto_accept:e.target.checked})});
   $('#openFolder').onclick = () => api('/api/open-folder',{method:'POST',body:'{}'});
   $('#addIpBtn').onclick = async () => {

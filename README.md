@@ -73,6 +73,8 @@ Notlar:
 | Cihaz görünmüyorsa | **+ IP ile ekle** ile diğer bilgisayarın IP adresini girin (o bilgisayarın Bulut ekranında, "Telefonla bağlan" kutusunda yazar). |
 | Kapatma | Saatin yanındaki bulut simgesine sağ tıklayın → **Çıkış**. |
 | Kayıt klasörünü değiştirme | **Alınan dosyalar** kartındaki **Klasör seç** düğmesi (veya **Elle yaz** ile yolu yazın, ör. `D:\Fotoğraflar\iPhone`). |
+| iPhone fotoğraflarını JPG yapma | **"iPhone fotoğraflarını (HEIC) JPG'ye çevir"** kutusunu işaretleyin. Gelen HEIC fotoğraflar doğru yönde ve çekim bilgileri (tarih, konum) korunarak JPG olarak kaydedilir; HEIC dosyası silinir. |
+| Aylara göre ayırma | **"Aylara göre klasörle"** kutusunu işaretleyin. Gelen dosyalar `Bulut\2026-11` gibi aylık klasörlere düşer. |
 | Onaysız alma | "Gelen dosyaları otomatik kabul et" kutusunu işaretleyin (sadece güvendiğiniz ağlarda). |
 
 Komut satırı seçenekleri:
@@ -86,6 +88,8 @@ py bulut.py --console      # simge olmadan konsolda çalıştır
 ## Teknik bilgi
 
 - `bulut.py`: Sunucu. Yalnızca Python standart kütüphanesini kullanır.
+- HEIC → JPG dönüştürme için `pillow-heif` paketi kullanılır (`baslat.bat` kurar). Kurulamazsa yalnızca bu ayar kapalı kalır, Bulut'un geri kalanı çalışır.
+- Aynı cihazdan aynı anda en fazla 3, toplamda 20 bekleyen dosya isteği kabul edilir. Böylece ağdaki biri ekranınızı onay pencereleriyle dolduramaz.
 - `bulut_windows.py`: Tepsi simgesi (`pystray`, `Pillow`), Windows bildirimi ve otomatik başlatma (`HKCU\...\Run` kaydı). Paketler yoksa Bulut konsol modunda çalışmaya devam eder.
 - `static/qrcode.js`: QR kod çizici ([qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator), MIT lisansı). Bulut'un içinde geldiği için QR kodlar internetsiz de çalışır.
 - `static/index.html`: Arayüz. Bilgisayarda kontrol paneli, telefonda gönder/indir ekranı olarak açılır.
