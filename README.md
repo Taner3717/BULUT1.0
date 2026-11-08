@@ -17,14 +17,18 @@ Windows 11 için **AirDrop benzeri** yerel ağ dosya paylaşımı.
 ## Kurulum (Windows 11)
 
 1. **Python 3'ü kurun:** <https://www.python.org/downloads/>. Kurulumda **"Add python.exe to PATH"** kutusunu işaretleyin.
-2. Bu depoyu indirin (GitHub'da **Code → Download ZIP**) ve bir klasöre çıkarın.
+2. Bu depoyu indirin (GitHub'da **Code → Download ZIP**) ve **kalıcı bir klasöre** çıkarın (ör. `C:\Bulut`). Bulut bu konumu Windows açılışına kaydeder.
 3. **`baslat.bat`** dosyasına çift tıklayın.
    - İlk seferde gerekli iki paket (`pystray`, `Pillow`) otomatik kurulur.
    - Tarayıcıda Bulut arayüzü açılır, saatin yanında (gerekirse `^` okunun altında) bulut simgesi belirir.
    - Bulut bundan sonra **Windows açılışında kendiliğinden** arka planda başlar.
 4. Windows Güvenlik Duvarı izin isterse **"Özel ağlar"** için izin verin.
    - Pencere çıkmadıysa ya da cihazlar birbirini görmüyorsa: `guvenlik_duvari.bat` dosyasına sağ tıklayıp **Yönetici olarak çalıştır** seçin.
-   - Ağ profilinin **Özel** olduğundan emin olun: *Ayarlar → Ağ ve İnternet → Wi-Fi → (ağınız) → Ağ profili türü: Özel*.
+   - Ağ profilinin **Özel** olduğundan emin olun:
+     - Kablosuz: *Ayarlar → Ağ ve İnternet → Wi-Fi → (ağınız) → Ağ profili türü: Özel*
+     - Kablolu: *Ayarlar → Ağ ve İnternet → Ethernet → Ağ profili türü: Özel*
+
+> Kablolu ve kablosuz cihazlar aynı modeme bağlıysa birlikte çalışır. Misafir Wi-Fi ağları genelde ayrıdır, bu yüzden ana ağı kullanın. Cihaz listede görünmezse **+ IP ile ekle** ile adresini girin.
 
 Diğer bilgisayarda da aynı adımları uygulayın. Birkaç saniye içinde iki bilgisayar birbirini "Yakındaki cihazlar" listesinde görür.
 
