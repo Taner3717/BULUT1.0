@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bulut 1.0</title>
+<style>
+  :root {
+    --bg: #f5f7fb; --panel: #ffffff; --text: #1d2433; --muted: #6b7385;
+    --border: #dde2ec; --accent: #3b82f6; --ok: #22a06b; --warn: #e3a008; --danger: #e5484d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11141b; --panel: #1a1f2a; --text: #e6e9f0; --muted: #9aa3b5;
+      --border: #2b3242; --accent: #60a5fa;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; min-height: 100vh; }
+  h1 { margin: 0; font-size: 20px; }
+
+  #history { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .msg { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg small { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+
+  /* Bağlam penceresi */
+  .context { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .context header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .context h2 { margin: 0; font-size: 14px; }
+  .context label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .context select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; }
+  .bar { height: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; margin: 10px 0 8px; display: flex; }
+  .bar span { display: block; height: 100%; transition: width .2s; }
+  .bar .used { background: var(--accent); }
+  .bar .draft { background: var(--warn); opacity: .7; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; font-size: 13px; color: var(--muted); }
+  .stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .context.full .bar .used { background: var(--danger); }
+  .notice { margin-top: 8px; font-size: 13px; color: var(--danger); display: none; }
+  .context.full .notice { display: block; }
+
+  /* Prompt */
+  form { display: flex; flex-direction: column; gap: 8px; }
+  textarea { width: 100%; min-height: 110px; resize: vertical; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text); font: inherit; }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; }
+  button { border: 0; border-radius: 8px; padding: 8px 14px; font: inherit; cursor: pointer; }
+  button[type=submit] { background: var(--accent); color: #fff; }
+  button[type=submit]:disabled { opacity: .5; cursor: not-allowed; }
+  button.secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Bulut 1.0</h1>
+
+  <section id="history" aria-live="polite"></section>
+
+  <!-- Bağlam penceresi: promptun hemen üzerinde -->
+  <section class="context" id="context" aria-label="Bağlam penceresi">
+    <header>
+      <h2>Bağlam penceresi</h2>
+      <label>Kapasite
+        <select id="limit">
+          <option value="8000">8K token</option>
+          <option value="32000">32K token</option>
+          <option value="128000" selected>128K token</option>
+          <option value="200000">200K token</option>
+          <option value="1000000">1M token</option>
+        </select>
+      </label>
+    </header>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar">
+      <span class="used" id="barUsed"></span>
+      <span class="draft" id="barDraft"></span>
+    </div>
+    <div class="stats">
+      <div>Kullanılan: <b id="used">0</b></div>
+      <div>Taslak: <b id="draft">0</b></div>
+      <div>Kalan: <b id="left">0</b></div>
+      <div>Doluluk: <b id="pct">0%</b></div>
+    </div>
+    <div class="notice">Bağlam penceresi doldu. Yeni mesaj göndermek için geçmişi temizleyin.</div>
+  </section>
+
+  <form id="promptForm">
+    <textarea id="prompt" placeholder="Mesajınızı yazın…" aria-label="Prompt"></textarea>
+    <div class="actions">
+      <button type="button" class="secondary" id="clear">Geçmişi temizle</button>
+      <button type="submit" id="send">Gönder</button>
+    </div>
+  </form>
+</main>
+
+<script>
+  // Yaklaşık token tahmini: ~4 karakter = 1 token
+  const estimateTokens = (s) => Math.ceil(s.trim().length / 4);
+  const fmt = (n) => n.toLocaleString('tr-TR');
+
+  const el = (id) => document.getElementById(id);
+  const history = [];
+
+  function render() {
+    const limit = Number(el('limit').value);
+    const used = history.reduce((sum, m) => sum + m.tokens, 0);
+    const draft = estimateTokens(el('prompt').value);
+    const total = used + draft;
+    const left = Math.max(0, limit - total);
+    const pct = Math.min(100, (total / limit) * 100);
+
+    el('used').textContent = fmt(used);
+    el('draft').textContent = fmt(draft);
+    el('left').textContent = fmt(left);
+    el('pct').textContent = pct.toFixed(1) + '%';
+    el('barUsed').style.width = Math.min(100, (used / limit) * 100) + '%';
+    el('barDraft').style.width = Math.max(0, Math.min(100 - (used / limit) * 100, (draft / limit) * 100)) + '%';
+    el('bar').setAttribute('aria-valuenow', pct.toFixed(0));
+
+    const full = total > limit;
+    el('context').classList.toggle('full', full);
+    el('send').disabled = full || draft === 0;
+  }
+
+  function addMessage(role, text) {
+    history.push({ role, text, tokens: estimateTokens(text) });
+    const div = document.createElement('div');
+    div.className = 'msg';
+    const label = document.createElement('small');
+    label.textContent = role === 'user' ? 'Sen' : 'Bulut';
+    div.append(label, document.createTextNode(text));
+    el('history').append(div);
+  }
+
+  el('promptForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = el('prompt').value.trim();
+    if (!text) return;
+    addMessage('user', text);
+    el('prompt').value = '';
+    render();
+  });
+  el('prompt').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) el('promptForm').requestSubmit();
+  });
+  el('prompt').addEventListener('input', render);
+  el('limit').addEventListener('change', render);
+  el('clear').addEventListener('click', () => {
+    history.length = 0;
+    el('history').replaceChildren();
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
