@@ -9,6 +9,7 @@ Yalnizca Python standart kutuphanesini kullanir (Python 3.9+).
 """
 
 import argparse
+import queue
 import http.client
 import json
 import os
@@ -245,6 +246,11 @@ class State:
         self.ui_seen = 0.0   # arayuzun son yoklama zamani
         self.notifier = None  # (baslik, metin) -> masaustu bildirimi
         self.autostart_ok = False
+        self.convert_queue = queue.Queue()
+        self._quick_batch = []
+        self._quick_last = 0.0
+        self._quick_timer = False
+        self._quick_prev_end = 0.0
         self.shared_dir = data_dir() / "paylasilan"
         shutil.rmtree(self.shared_dir, ignore_errors=True)
         self.shared_dir.mkdir(parents=True, exist_ok=True)
@@ -280,10 +286,27 @@ class State:
         return self.folder
 
     def after_receive(self, path: Path) -> Path:
-        """Dosya tamamen alindiktan sonra: istenirse HEIC -> JPG."""
-        if self.cfg.get("heic_to_jpg"):
-            return convert_heic(path)
+        """Dosya tamamen alindiktan sonra: istenirse HEIC -> JPG (arka planda).
+
+        Donusturme gonderen tarafi bekletmesin diye kuyruga alinir; iPhone
+        kestirmesi bir sonraki fotografa hemen gecebilir.
+        """
+        if self.cfg.get("heic_to_jpg") and path.suffix.lower() in (".heic", ".heif"):
+            self.convert_queue.put(path)
         return path
+
+    def convert_worker(self):
+        while True:
+            path = self.convert_queue.get()
+            try:
+                new = convert_heic(path)
+                if new != path:
+                    with self.lock:
+                        for item in self.received:
+                            if item.get("path") == str(path):
+                                item.update(name=new.name, path=str(new), size=file_size(new, item.get("size", 0)))
+            except Exception as e:
+                log("Donusturme hatasi:", e)
 
     # --- esler ---
     def upsert_peer(self, pid, name, ip, port, os_name="", manual=False):
@@ -317,21 +340,29 @@ class State:
         }
 
     def quick_received(self, name):
-        """Kestirme ile gelenleri 3 sn icinde toplayip tek bildirim gosterir."""
-        with self.lock:
-            self._quick_batch = getattr(self, "_quick_batch", [])
-            self._quick_batch.append(name)
-            if len(self._quick_batch) > 1:
-                return
+        """Kestirme ile gelenleri toplar; son dosyadan 5 sn sonra TEK bildirim gosterir.
 
-        def flush():
-            with self.lock:
-                names, self._quick_batch = self._quick_batch, []
+        70 fotograf yavas yavas gelse bile tek bildirim cikar.
+        """
+        with self.lock:
+            self._quick_batch.append(name)
+            self._quick_last = time.time()
+            if self._quick_timer:
+                return
+            self._quick_timer = True
+
+        def waiter():
+            while True:
+                time.sleep(1)
+                with self.lock:
+                    if time.time() - self._quick_last < 5:
+                        continue
+                    names, self._quick_batch = self._quick_batch, []
+                    self._quick_timer = False
+                break
             body = names[0] if len(names) == 1 else f"{len(names)} dosya"
             self.notify("iPhone'dan alındı", body, force=True)
-        t = threading.Timer(3, flush)
-        t.daemon = True
-        t.start()
+        threading.Thread(target=waiter, daemon=True).start()
 
     def pending_count(self):
         with self.lock:
@@ -971,6 +1002,7 @@ class Handler(BaseHTTPRequestHandler):
         except OSError as e:
             raise ApiError(500, f"Kayit klasorune yazilamiyor ({STATE.folder}): {e}")
         size, ok = 0, False
+        t0 = time.time()
         try:
             with fh:
                 for chunk in self.iter_body():
@@ -979,7 +1011,6 @@ class Handler(BaseHTTPRequestHandler):
             if size == 0:
                 raise ApiError(400, "Dosya bos geldi")
             path = STATE.after_receive(path)
-            size = path.stat().st_size
             ok = True
         finally:
             if not ok:
@@ -991,7 +1022,14 @@ class Handler(BaseHTTPRequestHandler):
         with STATE.lock:
             STATE.add_received({"name": path.name, "path": str(path), "size": size,
                                    "from": sender, "time": time.time()})
-        log(f"Kestirme ile alindi: {path.name} ({human(size)}) <- {sender} ({self.client_ip})")
+        t1 = time.time()
+        with STATE.lock:
+            prev, STATE._quick_prev_end = STATE._quick_prev_end, t1
+        gap = (t0 - prev) if prev and t0 - prev < 600 else None
+        speed = size / max(t1 - t0, 0.001) / (1024 * 1024)
+        log(f"Kestirme ile alindi: {path.name} ({human(size)}) <- {sender} ({self.client_ip}) | "
+            f"aktarim {t1 - t0:.1f} sn, {speed:.1f} MB/sn"
+            + (f" | telefon hazirlik {gap:.1f} sn" if gap is not None else ""))
         STATE.quick_received(path.name)
         self.send_json({"ok": True, "name": path.name, "mesaj": f"Bulut: {path.name} kaydedildi"})
 
@@ -1192,6 +1230,7 @@ def main():
 
     STATE = State(args.port, args.name, args.folder)
     threading.Thread(target=maintenance_loop, daemon=True).start()
+    threading.Thread(target=STATE.convert_worker, daemon=True).start()
     start_discovery()
     tray = setup_desktop(args, url, server)
 
