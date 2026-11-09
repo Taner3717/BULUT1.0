@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bulut Kestirmesi</title>
+<style>
+  :root { --bg:#f4f6fb; --card:#fff; --text:#18202f; --muted:#667085; --line:#e3e7ef; --accent:#2f6fed; --ok:#12a150; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1420; --card:#171e2d; --text:#e8ecf4; --muted:#98a2b3; --line:#263045; --accent:#5b8cff; --ok:#32d583; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 -apple-system, system-ui, "Segoe UI", sans-serif; }
+  .wrap { max-width:560px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:16px; }
+  textarea { width:100%; font:13px ui-monospace, Menlo, monospace; padding:10px; border-radius:10px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); resize:none; height:72px; }
+  button { font:inherit; font-weight:600; width:100%; margin-top:10px; padding:12px; border-radius:12px; border:0; background:var(--accent); color:#fff; }
+  ol { padding-left:22px; margin:8px 0 0; }
+  li { margin-bottom:12px; }
+  b.k { background:var(--bg); border:1px solid var(--line); padding:1px 6px; border-radius:6px; font-weight:600; white-space:nowrap; }
+  .en { color:var(--muted); font-size:13px; }
+  .ok { color:var(--ok); font-weight:600; text-align:center; min-height:22px; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Fotoğraflar'dan bilgisayara gönder</h1>
+  <div class="sub">Bu kurulum bir kez yapılır. Sonra Fotoğraflar → Paylaş menüsünde <b>"Bilgisayara Gönder"</b> çıkar ve fotoğraflar doğrudan <b>{{NAME}}</b> bilgisayarına gider.</div>
+
+  <div class="card">
+    <b>1. Bu adresi kopyalayın</b>
+    <div class="sub" style="margin:4px 0 8px">Bu adres size özeldir, başkasıyla paylaşmayın.</div>
+    <textarea id="u" readonly>{{URL}}</textarea>
+    <button id="copy">Adresi kopyala</button>
+    <div class="ok" id="msg"></div>
+  </div>
+
+  <div class="card">
+    <b>2. Kestirmeyi oluşturun</b>
+    <div class="sub" style="margin:4px 0 8px">Önemli: Kestirmeyi oluştururken alttaki <b>"Bir değişikliği betimleyin"</b> kutusuna bir şey yazmayın. iPhone kestirmeyi tahmin ederek yanlış doldurur; eylemleri aşağıdaki gibi elle ekleyin.</div>
+    <ol>
+      <li><b class="k">Kestirmeler</b> uygulamasını açın <span class="en">(Shortcuts)</span>. Sağ üstteki <b class="k">+</b> ile yeni kestirme oluşturun. En üstteki adına dokunup <b>Bilgisayara Gönder</b> yazın.</li>
+      <li>iPhone kendiliğinden eylem eklediyse (ör. <b class="k">Paylaş</b>), sağındaki <b class="k">✕</b> ile silin.</li>
+      <li>Altta <b class="k">ⓘ</b> düğmesine dokunup <b class="k">Paylaşma Sayfası'nda Göster</b>'i açın, sonra <b>✓</b>'e basın. En üstte <b>"Paylaşma Sayfası giriş yüzeyinden … girişini al"</b> yazmalı; <b>Hiçbir Yer</b> yazıyorsa ona dokunup <b>Paylaşma Sayfası</b>'nı seçin.</li>
+      <li><b class="k">Arayın</b> kutusuna <b>yinele</b> yazın ve <b class="k">Her Biri İçin Yinele</b>'yi ekleyin <span class="en">(Repeat with Each)</span>. Soluk <b>Öğeler</b> yazısına dokunup <b class="k">Kestirme Girişi</b>'ni seçin.</li>
+      <li><b class="k">Arayın</b> kutusuna <b>içeriğini</b> yazın ve yeşil simgeli <b class="k">URL'nin İçeriğini Al</b>'ı ekleyin <span class="en">(Get Contents of URL)</span>. Zincir simgeli tek başına <b>URL</b> eylemi değil.
+        <ul>
+          <li>Eylemi basılı tutup <b>"…her öğeyle yinele"</b> ile <b>"Yinelemeyi Bitir"</b> satırlarının <b>arasına</b> sürükleyin.</li>
+          <li>Mavi adres alanına dokunup kopyaladığınız adresi <b>yapıştırın</b>.</li>
+          <li><b class="k">›</b> okuna dokunun: Yöntem <b>POST</b>, İstek Gövdesi <b>Dosya</b>, Dosya <b class="k">Yineleme Öğesi</b> <span class="en">(Repeat Item)</span>.</li>
+        </ul>
+      </li>
+      <li>Sol üstteki <b>&lt;</b> ile çıkın, kestirme kaydedilir. Bildirim eklemeye gerek yok; bilgisayarda zaten bildirim çıkar.</li>
+    </ol>
+    <div class="sub" style="margin-top:8px">Son hali yukarıdan aşağı:<br>
+      1. Paylaşma Sayfası … girişini al<br>
+      2. Kestirme Girişi girişinde her öğeyle yinele<br>
+      3. &nbsp;&nbsp;&nbsp;http://…/api/quick?t=… içeriğini al <i>(POST · Dosya · Yineleme Öğesi)</i><br>
+      4. Yinelemeyi Bitir</div>
+  </div>
+
+  <div class="card">
+    <b>3. Kullanın</b>
+    <ol>
+      <li><b>Fotoğraflar</b>'da bir veya birden çok fotoğraf seçin → <b class="k">Paylaş</b>.</li>
+      <li>Aşağı kaydırıp <b>Bilgisayara Gönder</b>'e dokunun. İlk seferde "yerel ağdaki aygıtlara erişim" izni istenirse <b>İzin Ver</b> deyin.</li>
+      <li>Fotoğraflar bilgisayarın <b>İndirilenler\Bulut</b> klasörüne düşer, bilgisayarda bildirim çıkar.</li>
+    </ol>
+    <div class="sub" style="margin-top:8px">İpucu: Paylaş menüsünün alt kısmındaki <b>Eylemleri Düzenle</b> ile "Bilgisayara Gönder"i en üste taşıyabilirsiniz.</div>
+  </div>
+
+  <div class="card sub">
+    Çalışmazsa: telefon ve bilgisayar aynı Wi-Fi'de mi, bilgisayarda Bulut açık mı kontrol edin. Bilgisayarın IP adresi değişirse Bulut'taki QR kodu tekrar okutup URL'yi kestirmede güncelleyin.
+  </div>
+</div>
+<script>
+  document.getElementById('copy').onclick = async function () {
+    const t = document.getElementById('u'), m = document.getElementById('msg');
+    let ok = false;
+    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(t.value); ok = true; } } catch (e) {}
+    if (!ok) {
+      t.removeAttribute('readonly'); t.focus(); t.setSelectionRange(0, t.value.length);
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      t.setAttribute('readonly', ''); t.blur();
+    }
+    m.textContent = ok ? 'Kopyalandı ✓' : 'Adrese uzun basıp "Tümünü Seç → Kopyala" deyin';
+  };
+</script>
+</body>
+</html>

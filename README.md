@@ -1,2 +1,104 @@
-# BULUT1.0
-Bulut 1.0
+# Bulut 1.0
+
+Windows 11 için **AirDrop benzeri** yerel ağ dosya paylaşımı.
+
+- Aynı Wi-Fi / ağdaki Bulut çalışan bilgisayarları **otomatik bulur**.
+- Dosyayı cihazın üstüne **sürükle-bırak** ya da tıklayıp seç.
+- Alıcı tarafta **"Kabul et / Reddet"** penceresi çıkar (ses + bildirim).
+- **Arka planda çalışır:** Windows açılınca gizlice başlar, saatin yanında bulut simgesi durur.
+- Dosya isteği gelince **Windows bildirimi** çıkar; tıklayınca onay ekranı açılır.
+- **iPhone Fotoğraflar → Paylaş → "Bilgisayara Gönder":** Bir kerelik Kestirme kurulumuyla fotoğraflar tek dokunuşla, onay beklemeden bilgisayara gelir.
+- **Telefonlar** (iPhone / Android) uygulama kurmadan, **QR kodu okutup** tarayıcıdan bilgisayara dosya gönderebilir.
+- Bilgisayardan telefona: "Telefonlara paylaş" listesine eklenen dosyalar telefondan indirilebilir.
+- İnternet gerekmez. Dosyalar doğrudan cihazlar arasında, yerel ağ üzerinden aktarılır.
+- Gelen dosyalar varsayılan olarak `İndirilenler\Bulut` klasörüne kaydedilir.
+
+> Not: Apple'ın gerçek AirDrop'u Windows'ta bulunmayan özel bir kablosuz protokol kullanır. Bulut aynı deneyimi yerel ağ üzerinden sağlar. Cihazların **aynı ağa** bağlı olması gerekir.
+
+## Kurulum (Windows 11)
+
+1. **Python 3'ü kurun:** <https://www.python.org/downloads/>. Kurulumda **"Add python.exe to PATH"** kutusunu işaretleyin.
+2. Bu depoyu indirin (GitHub'da **Code → Download ZIP**) ve **kalıcı bir klasöre** çıkarın (ör. `C:\Bulut`). Bulut bu konumu Windows açılışına kaydeder.
+3. **`baslat.bat`** dosyasına çift tıklayın.
+   - İlk seferde gerekli iki paket (`pystray`, `Pillow`) otomatik kurulur.
+   - Tarayıcıda Bulut arayüzü açılır, saatin yanında (gerekirse `^` okunun altında) bulut simgesi belirir.
+   - Bulut bundan sonra **Windows açılışında kendiliğinden** arka planda başlar.
+4. Windows Güvenlik Duvarı izin isterse **"Özel ağlar"** için izin verin.
+   - Pencere çıkmadıysa ya da cihazlar birbirini görmüyorsa: `guvenlik_duvari.bat` dosyasına sağ tıklayıp **Yönetici olarak çalıştır** seçin.
+   - Ağ profilinin **Özel** olduğundan emin olun:
+     - Kablosuz: *Ayarlar → Ağ ve İnternet → Wi-Fi → (ağınız) → Ağ profili türü: Özel*
+     - Kablolu: *Ayarlar → Ağ ve İnternet → Ethernet → Ağ profili türü: Özel*
+
+> Kablolu ve kablosuz cihazlar aynı modeme bağlıysa birlikte çalışır. Misafir Wi-Fi ağları genelde ayrıdır, bu yüzden ana ağı kullanın. Cihaz listede görünmezse **+ IP ile ekle** ile adresini girin.
+
+5. İsterseniz **`kisayol_olustur.bat`**'ı çalıştırın. Masaüstüne ve Başlat menüsüne Bulut simgeli **Bulut** kısayolu eklenir.
+
+Diğer bilgisayarda da aynı adımları uygulayın. Birkaç saniye içinde iki bilgisayar birbirini "Yakındaki cihazlar" listesinde görür.
+
+### Python'suz kullanım (tek dosya .exe)
+
+Python kurulu bir bilgisayarda `exe_olustur.bat` dosyasını çalıştırın. Oluşan `dist\Bulut.exe` dosyası, Python kurulu olmayan Windows bilgisayarlara kopyalanıp doğrudan çalıştırılabilir.
+
+### Arka planda çalışma ve otomatik başlatma
+
+- Bulut konsol penceresi olmadan, bildirim alanındaki **bulut simgesiyle** çalışır.
+  - **Sol tık:** arayüzü açar.
+  - **Sağ tık:** *Bulut'u aç*, *Gelen dosyalar klasörü*, *Windows ile başlat*, *Çıkış*.
+- Bekleyen bir dosya isteği varsa simgede **kırmızı nokta** görünür.
+- Arayüz açık değilken bir istek gelirse **Windows bildirimi** çıkar. Tıklayınca onay ekranı açılır. Dosyalar alınınca da bildirim gelir.
+- **Windows ile başlatma** ilk çalıştırmada açılır. Arayüzdeki "Windows açılışında başlat" kutusundan veya simge menüsünden kapatılabilir.
+- Bulut klasörünü başka bir yere taşırsanız `baslat.bat`'ı bir kez yeniden çalıştırın, başlangıç kaydı yeni yere güncellenir.
+- Sorun yaşarsanız `konsol_modu.bat` ile mesajları görebilirsiniz. Günlük dosyası: `%LOCALAPPDATA%\Bulut\bulut.log`.
+
+## iPhone: Fotoğraflar'dan tek dokunuşla gönderme
+
+iPhone'un **AirDrop listesi yalnızca Apple cihazlarını gösterir**; Windows bilgisayarlar orada görünemez. Bunun yerine iPhone'un yerleşik **Kestirmeler** uygulamasıyla Paylaş menüsüne **"Bilgisayara Gönder"** eklenir:
+
+1. Bilgisayardaki Bulut ekranında **🍏 iPhone** kartındaki QR kodu iPhone kamerasıyla okutun.
+2. Açılan sayfadaki adresi kopyalayın ve oradaki adımlarla kestirmeyi oluşturun. Bu bir kerelik bir işlemdir, yaklaşık 2 dakika sürer.
+3. Bundan sonra **Fotoğraflar → (bir veya çok fotoğraf seçin) → Paylaş → Bilgisayara Gönder**. Fotoğraflar onay beklemeden `İndirilenler\Bulut` klasörüne gelir ve bilgisayarda bildirim çıkar.
+
+Notlar:
+- Kestirme adresi gizli bir anahtar içerir; yalnızca bu adrese sahip olan cihaz onaysız gönderebilir. Adres başkasının eline geçerse **Adresi yenile** düğmesine basın. Eski kestirmeler çalışmaz hale gelir, yeniden kurmanız gerekir.
+- Kurulum QR kodu bilgisayarın adını kullanır (ör. `http://desktop-xxxx.local:8765`). Böylece modem bilgisayara farklı bir IP verse bile kestirme çalışmaya devam eder. iPhone bu adı çözemezse kartta yazan IP'li adresi kullanın; o zaman IP değişince kestirmedeki URL'yi güncellemeniz gerekir.
+
+## Kullanım
+
+| İşlem | Nasıl |
+|---|---|
+| Bilgisayardan bilgisayara | "Yakındaki cihazlar"da cihaza tıklayın veya dosyaları üstüne sürükleyin. Karşı taraf kabul edince gönderim başlar. |
+| iPhone Fotoğraflar'dan | **Paylaş → Bilgisayara Gönder** (bir kerelik kurulum gerekir; yukarıya bakın). |
+| Telefondan bilgisayara | Telefonla QR kodu okutun (veya ekrandaki `http://192.168.x.x:8765` adresini açın) → **Dosya seçin**. Bilgisayarda **Kabul et**'e basın. |
+| Bilgisayardan telefona | **Telefonlara paylaş → + Dosya ekle**. Telefondaki Bulut sayfasında **İndir**'e basın. |
+| Cihaz görünmüyorsa | **+ IP ile ekle** ile diğer bilgisayarın IP adresini girin (o bilgisayarın Bulut ekranında, "Telefonla bağlan" kutusunda yazar). |
+| Kapatma | Saatin yanındaki bulut simgesine sağ tıklayın → **Çıkış**. |
+| Kayıt klasörünü değiştirme | **Alınan dosyalar** kartındaki **Klasör seç** düğmesi (veya **Elle yaz** ile yolu yazın, ör. `D:\Fotoğraflar\iPhone`). |
+| iPhone fotoğraflarını JPG yapma | **"iPhone fotoğraflarını (HEIC) JPG'ye çevir"** kutusunu işaretleyin. Gelen HEIC fotoğraflar doğru yönde ve çekim bilgileri (tarih, konum) korunarak JPG olarak kaydedilir; HEIC dosyası silinir. |
+| Aylara göre ayırma | **"Aylara göre klasörle"** kutusunu işaretleyin. Gelen dosyalar `Bulut\2026-11` gibi aylık klasörlere düşer. |
+| Onaysız alma | "Gelen dosyaları otomatik kabul et" kutusunu işaretleyin (sadece güvendiğiniz ağlarda). |
+
+Komut satırı seçenekleri:
+
+```
+py bulut.py --name "Ofis PC" --folder "D:\Gelenler" --port 8765 --no-browser
+py bulut.py --background   # tarayıcı açmadan arka planda başlat
+py bulut.py --console      # simge olmadan konsolda çalıştır
+```
+
+## Teknik bilgi
+
+- `bulut.py`: Sunucu. Yalnızca Python standart kütüphanesini kullanır.
+- HEIC → JPG dönüştürme için `pillow-heif` paketi kullanılır (`baslat.bat` kurar). Kurulamazsa yalnızca bu ayar kapalı kalır, Bulut'un geri kalanı çalışır.
+- Aynı cihazdan aynı anda en fazla 3, toplamda 20 bekleyen dosya isteği kabul edilir. Böylece ağdaki biri ekranınızı onay pencereleriyle dolduramaz.
+- `bulut_windows.py`: Tepsi simgesi (`pystray`, `Pillow`), Windows bildirimi ve otomatik başlatma (`HKCU\...\Run` kaydı). Paketler yoksa Bulut konsol modunda çalışmaya devam eder.
+- `static/qrcode.js`: QR kod çizici ([qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator), MIT lisansı). Bulut'un içinde geldiği için QR kodlar internetsiz de çalışır.
+- `static/index.html`: Arayüz. Bilgisayarda kontrol paneli, telefonda gönder/indir ekranı olarak açılır.
+- Keşif: UDP **8766** portundan 3 saniyede bir yayın (broadcast) yapılır.
+- Aktarım: HTTP, TCP **8765** portu. Dosyalar parça parça akıtılır, büyük dosyalar belleği doldurmaz.
+- Güvenlik:
+  - Dosya yüklenebilmesi için alıcının teklifi onaylaması gerekir.
+  - Her teklif tahmin edilemez bir kimlik taşır. Dosya adı ve boyutu teklifle birebir eşleşmelidir.
+  - Ayarlar ve onay işlemleri yalnızca bilgisayarın kendisinden (`localhost`) yapılabilir. Bu uçlar başka web sitelerinden gelen isteklere (CSRF / DNS rebinding) karşı korunur.
+  - Dosya adları Windows için temizlenir (`..`, `:`, `CON` vb.).
+  - Bağlantı şifrelenmez (HTTP). Bu yüzden Bulut'u yalnızca güvendiğiniz ev veya ofis ağlarında kullanın.
+- Ayarlar: `%LOCALAPPDATA%\Bulut\config.json`
