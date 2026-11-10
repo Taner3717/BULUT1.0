@@ -2,6 +2,7 @@ import {
   fmt, addDays, daysBetween, round, sortEntries, movingAverage, weeklySummaries, evaluateWeek,
   projection, phaseOf, dailyFeedback, weeklyReport, toCSV, parseCSV, kcalFromMacros,
 } from './coach.js';
+import { PROGRAMS, EXERCISES, MUSCLES, VOLUME_RANGE, suggestNext, stallStatus, evaluateTraining, nextDayIndex } from './training.js';
 import { load, save, normalize, emptyState, upsertEntry, removeEntry } from './storage.js';
 
 let state = load();
@@ -87,6 +88,7 @@ function renderCoach(weeks) {
     <p class="headline st-${ev.status}">${esc(ev.headline)}</p>
     <ul class="decisions">${ev.decisions.map((d) => `<li class="d-${d.type}"><b>${esc(d.title)}</b>${d.detail ? `<span>${esc(d.detail)}</span>` : ''}</li>`).join('')}</ul>
     ${ev.flags.length ? `<ul class="flags">${ev.flags.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}
+    ${trainSummaryHTML()}
     ${changed ? `<ul class="plain diffs">${diff('kcal', 'Kalori')}${diff('protein', 'Protein', ' g')}${diff('carbs', 'Karb', ' g')}${diff('fat', 'Yağ', ' g')}${diff('steps', 'Adım')}${diff('cardioMin', 'Kardiyo', ' dk')}</ul>` : ''}
     <div class="row wrap">
       ${changed ? '<button id="apply-btn">Önerileri uygula</button>' : ''}
@@ -102,7 +104,9 @@ function renderCoach(weeks) {
     };
   }
   $('#report-btn').onclick = async () => {
-    const text = weeklyReport(wk, ev, state.profile, today());
+    const tev = trainingWeekEval();
+    const text = weeklyReport(wk, ev, state.profile, today()) + (state.training.sessions.length
+      ? `\n\nAntrenman (son 7 gün): ${tev.sessions} seans\n` + [...tev.decisions.map((d) => `• ${d.title}`), ...tev.flags.map((f) => `⚠ ${f}`)].join('\n') : '');
     try {
       await navigator.clipboard.writeText(text);
       toast('Rapor panoya kopyalandı');
@@ -110,6 +114,13 @@ function renderCoach(weeks) {
       prompt('Raporu kopyala:', text);
     }
   };
+}
+
+function trainSummaryHTML() {
+  if (!state.training.sessions.length) return '';
+  const t = trainingWeekEval();
+  const items = [...t.decisions.map((d) => `<li class="d-${d.type}"><b>Antrenman: ${esc(d.title)}</b><span>${esc(d.detail)}</span></li>`)];
+  return `<ul class="decisions">${items.join('')}</ul>${t.flags.length ? `<ul class="flags">${t.flags.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}`;
 }
 
 function chartSVG(ma, profile) {
@@ -315,6 +326,155 @@ $('#import-csv-file').onchange = async (e) => {
   e.target.value = '';
 };
 
+// ---------- Antrenman ----------
+function program() { return PROGRAMS[state.training.programId] || PROGRAMS.upperLower4; }
+
+function renderTrain() {
+  const tr = state.training;
+  const prog = program();
+  const next = nextDayIndex(prog, tr.sessions);
+  $('#train-program').innerHTML = `
+    <div class="card-head"><h2>Program</h2>
+      <select id="prog-select">${Object.entries(PROGRAMS).map(([id, p]) => `<option value="${id}" ${id === tr.programId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+    <p class="muted">Sıradaki gün vurgulandı. Ağırlık önerileri son seansına göre çift ilerleme ile hesaplanır.</p>
+    <div class="days">${prog.days.map((d, i) => `<button class="${i === next ? '' : 'ghost'}" data-start="${i}">${esc(d.name)}<small>${d.items.length} hareket · ${d.items.reduce((a, x) => a + x.sets, 0)} set</small></button>`).join('')}</div>`;
+  $('#prog-select').onchange = (e) => {
+    if (tr.draft && !confirm('Devam eden antrenman taslağı silinecek. Program değişsin mi?')) { e.target.value = tr.programId; return; }
+    tr.programId = e.target.value; tr.draft = null; persist(); renderTrain();
+  };
+  $$('[data-start]').forEach((b) => (b.onclick = () => startWorkout(+b.dataset.start)));
+  renderWorkout();
+  renderTrainWeek();
+  renderProgress();
+  renderTrainHistory();
+}
+
+function startWorkout(dayIdx) {
+  const tr = state.training;
+  if (tr.draft && !confirm('Devam eden antrenman taslağının yerine yenisi başlatılsın mı?')) return;
+  const day = program().days[dayIdx];
+  tr.draft = {
+    date: today(), dayName: day.name,
+    items: day.items.map((it) => {
+      const sug = suggestNext(it, tr.sessions);
+      return { ...it, planSets: it.sets, sug, sets: Array.from({ length: it.sets }, () => ({ kg: sug.kg, reps: null, rir: null })) };
+    }),
+  };
+  persist();
+  renderWorkout();
+  $('#train-workout').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderWorkout() {
+  const d = state.training.draft;
+  const box = $('#train-workout');
+  if (!d) { box.innerHTML = ''; return; }
+  box.innerHTML = `<form class="card" id="workout-form">
+    <div class="card-head"><h2>${esc(d.dayName)}</h2><input type="date" name="date" value="${d.date}" required></div>
+    ${d.items.map((it, i) => `<div class="ex">
+      <h3>${esc(EXERCISES[it.id]?.name || it.id)}</h3>
+      <div class="meta">${it.planSets ?? it.sets.length} × ${it.repMin}–${it.repMax} tekrar · ${it.rir} RIR · ${MUSCLES[EXERCISES[it.id]?.muscle] || ''}</div>
+      <div class="tip ${it.sug.action}">${esc(it.sug.text)}</div>
+      <div class="setrow head"><span>#</span><span>kg</span><span>tekrar</span><span>RIR</span><span></span></div>
+      ${it.sets.map((s, j) => `<div class="setrow">
+        <span class="n">${j + 1}</span>
+        <input data-i="${i}" data-j="${j}" data-k="kg" type="number" step="any" inputmode="decimal" value="${s.kg ?? ''}" placeholder="kg">
+        <input data-i="${i}" data-j="${j}" data-k="reps" type="number" step="1" inputmode="numeric" value="${s.reps ?? ''}" placeholder="${it.sug.reps ?? it.repMin}">
+        <input data-i="${i}" data-j="${j}" data-k="rir" type="number" step="1" min="0" max="10" inputmode="numeric" value="${s.rir ?? ''}" placeholder="${it.rir}">
+        <button type="button" class="icon" data-delset="${i}:${j}" title="Seti sil">×</button></div>`).join('')}
+      <button type="button" class="link" data-addset="${i}">+ set ekle</button>
+    </div>`).join('')}
+    <label class="full">Not<textarea name="note" rows="2" placeholder="Pump, ağrı, form…">${esc(d.note || '')}</textarea></label>
+    <div class="row"><button type="submit">Antrenmanı kaydet</button><button type="button" class="ghost danger" id="workout-cancel">Vazgeç</button></div>
+  </form>`;
+  const f = $('#workout-form');
+  f.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset.k) d.items[+t.dataset.i].sets[+t.dataset.j][t.dataset.k] = num(t.value);
+    else if (t.name === 'date') d.date = t.value;
+    else if (t.name === 'note') d.note = t.value;
+    persist();
+  });
+  f.addEventListener('click', (e) => {
+    const a = e.target.dataset.addset, del = e.target.dataset.delset;
+    if (a !== undefined) {
+      const sets = d.items[+a].sets;
+      const last = sets[sets.length - 1];
+      sets.push({ kg: last?.kg ?? d.items[+a].sug.kg, reps: null, rir: null });
+    } else if (del) {
+      const [i, j] = del.split(':').map(Number);
+      d.items[i].sets.splice(j, 1);
+    } else return;
+    persist(); renderWorkout();
+  });
+  $('#workout-cancel').onclick = () => {
+    if (!confirm('Antrenman taslağı silinsin mi?')) return;
+    state.training.draft = null; persist(); renderTrain();
+  };
+  f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const sets = d.items.flatMap((it) => it.sets.filter((s) => s.reps > 0).map((s) => ({ id: it.id, kg: s.kg ?? 0, reps: s.reps, rir: s.rir })));
+    if (!sets.length) { toast('En az bir setin tekrar sayısını gir'); return; }
+    state.training.sessions.push({ id: `${d.date}-${Date.now()}`, date: d.date, dayName: d.dayName, sets, note: (d.note || '').trim() });
+    const entry = state.entries.find((x) => x.date === d.date);
+    if (entry) entry.trained = true; else state.entries.push({ date: d.date, trained: true, note: '' });
+    state.training.draft = null;
+    persist();
+    toast(`${d.dayName} kaydedildi · ${sets.length} set`);
+    renderTrain();
+  });
+}
+
+function trainingWeekEval() {
+  const to = today(), from = addDays(to, -6);
+  const weeks = weeklySummaries(state.entries, state.profile);
+  return evaluateTraining({ sessions: state.training.sessions, program: program(), from, to, goal: state.profile.goal, recovery: weeks[weeks.length - 1]?.recovery ?? null });
+}
+
+function renderTrainWeek() {
+  const ev = trainingWeekEval();
+  const lo = state.profile.goal === 'cut' ? VOLUME_RANGE.cutMin : VOLUME_RANGE.min, hi = VOLUME_RANGE.max, scale = 24;
+  const muscles = [...new Set(program().days.flatMap((d) => d.items.map((i) => EXERCISES[i.id].muscle)))];
+  $('#train-week').innerHTML = `
+    <div class="card-head"><h2>Son 7 gün</h2><span class="muted">${ev.sessions} antrenman</span></div>
+    <div class="bars">${muscles.map((m) => {
+      const v = ev.volume[m];
+      const cls = v > hi ? 'high' : v < lo ? 'low' : '';
+      return `<div class="bar"><span>${MUSCLES[m]}</span><div class="track"><div class="zone" style="left:${(lo / scale) * 100}%;width:${((hi - lo) / scale) * 100}%"></div><div class="fill ${cls}" style="width:${Math.min(100, (v / scale) * 100)}%"></div></div><b>${v}</b></div>`;
+    }).join('')}</div>
+    <p class="muted">Zor set sayısı (RIR ≤ 4). Kesikli alan hedef aralık: ${lo}–${hi} set/hafta.</p>
+    ${ev.decisions.length ? `<ul class="decisions">${ev.decisions.map((d) => `<li class="d-${d.type}"><b>${esc(d.title)}</b><span>${esc(d.detail)}</span></li>`).join('')}</ul>` : ''}
+    ${ev.flags.length ? `<ul class="flags">${ev.flags.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}`;
+}
+
+function renderProgress() {
+  const ids = [...new Set(program().days.flatMap((d) => d.items.map((i) => i.id)))];
+  const rows = ids.map((id) => {
+    const st = stallStatus(state.training.sessions, id);
+    const h = st.history;
+    if (!h.length) return '';
+    const first = h[0].e1rm, last = h[h.length - 1].e1rm, best = Math.max(...h.map((x) => x.e1rm));
+    const ch = round(((last - first) / first) * 100, 1);
+    return `<tr><td>${esc(EXERCISES[id].name)}${st.stalled ? ' ⏸' : ''}</td><td>${h.length}</td><td>${last}</td><td>${best}</td><td class="${ch > 0 ? 'up' : ch < 0 ? 'down' : ''}">${ch > 0 ? '+' : ''}${ch}%</td></tr>`;
+  }).join('');
+  $('#train-progress').innerHTML = `<h2>Güç gelişimi</h2>${rows
+    ? `<div class="table-wrap"><table class="prog"><thead><tr><th>Hareket</th><th>Seans</th><th>Son e1RM</th><th>En iyi</th><th>Değişim</th></tr></thead><tbody>${rows}</tbody></table></div><p class="muted">e1RM: Epley formülüyle tahmini tek tekrar maksimum. ⏸ = son 3 seansta ilerleme yok.</p>`
+    : '<p class="muted">Henüz antrenman kaydı yok.</p>'}`;
+}
+
+function renderTrainHistory() {
+  const list = [...state.training.sessions].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 15);
+  $('#train-history').innerHTML = `<h2>Son antrenmanlar</h2>${list.length ? `<ul class="plain">${list.map((s) => {
+    const tonnage = Math.round(s.sets.reduce((a, x) => a + (x.kg || 0) * x.reps, 0));
+    return `<li><b>${s.date}</b> · ${esc(s.dayName)} · ${s.sets.length} set · ${tonnage} kg tonaj <button class="link danger" data-delsess="${esc(s.id)}">sil</button>${s.note ? `<br><span class="muted">${esc(s.note)}</span>` : ''}</li>`;
+  }).join('')}</ul>` : '<p class="muted">Henüz kayıt yok.</p>'}`;
+  $$('[data-delsess]').forEach((b) => (b.onclick = () => {
+    if (!confirm('Bu antrenman silinsin mi?')) return;
+    state.training.sessions = state.training.sessions.filter((s) => s.id !== b.dataset.delsess);
+    persist(); renderTrain();
+  }));
+}
+
 // ---------- Örnek veri ----------
 $('#demo-btn').onclick = () => {
   const start = addDays(today(), -34);
@@ -331,6 +491,20 @@ $('#demo-btn').onclick = () => {
       cardioMin: i % 2 ? 20 : 25, kcal: 2450 + ((i % 5) - 2) * 40, protein: 190, carbs: 260, fat: 70, trained: i % 7 !== 6, note: '',
     });
   }
+  // Örnek antrenmanlar: üst/alt, haftada 4; son 2 haftada bench ve squat platoda
+  const prog = PROGRAMS.upperLower4;
+  let di = 0;
+  for (let i = 0; i <= 34; i++) {
+    if (![0, 1, 3, 4].includes(i % 7)) continue;
+    const day = prog.days[di++ % prog.days.length];
+    const wk = Math.min(Math.floor(i / 7), 3);
+    const sets = day.items.flatMap((it) => {
+      const base = { bench: 85, squat: 110, row: 75, ohp: 52.5, rdl: 100, hackSquat: 140, hipThrust: 120, inclineDb: 30, cableRow: 65, pulldown: 65 }[it.id] ?? 20;
+      const kg = EXERCISES[it.id].type === 'c' ? base + wk * 2.5 : base + wk;
+      return Array.from({ length: it.sets }, (_, j) => ({ id: it.id, kg, reps: Math.max(it.repMin, it.repMax - 2 - j), rir: it.rir }));
+    });
+    s.training.sessions.push({ id: `demo-${i}`, date: addDays(start, i), dayName: day.name, sets, note: '' });
+  }
   state = s;
   persist();
   toast('Örnek veri yüklendi');
@@ -345,6 +519,7 @@ function render() {
   const active = $('.view.active').id.replace('view-', '');
   if (active === 'dash') renderDash();
   if (active === 'weeks') renderWeeks();
+  if (active === 'train') renderTrain();
   if (active === 'history') renderHistory();
   if (active === 'settings') fillProfile();
   if (active === 'log' && !$('#log-form').date.value) fillLog(today());

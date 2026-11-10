@@ -3,7 +3,7 @@ import { DEFAULT_PROFILE } from './coach.js';
 const KEY = 'bulut.v1';
 
 export function emptyState() {
-  return { profile: structuredClone(DEFAULT_PROFILE), entries: [] };
+  return { profile: structuredClone(DEFAULT_PROFILE), entries: [], training: { programId: 'upperLower4', sessions: [], draft: null } };
 }
 
 export function normalize(raw) {
@@ -13,7 +13,13 @@ export function normalize(raw) {
   profile.targets = { ...base.profile.targets, ...((raw.profile || {}).targets || {}) };
   profile.targetHistory = Array.isArray(profile.targetHistory) ? profile.targetHistory : [];
   const entries = Array.isArray(raw.entries) ? raw.entries.filter((e) => e && /^\d{4}-\d{2}-\d{2}$/.test(e.date)) : [];
-  return { profile, entries };
+  const t = raw.training || {};
+  const training = {
+    programId: t.programId || base.training.programId,
+    sessions: Array.isArray(t.sessions) ? t.sessions.filter((x) => x && x.date && Array.isArray(x.sets)) : [],
+    draft: t.draft && Array.isArray(t.draft.items) ? t.draft : null,
+  };
+  return { profile, entries, training };
 }
 
 export function load() {

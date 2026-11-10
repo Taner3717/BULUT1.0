@@ -19,6 +19,7 @@ GitHub Pages ile de yayınlanabilir (statik dosyalar, derleme adımı yok).
 |---|---|
 | **Pano** | 7 günlük ortalama kilo, haftalık/toplam değişim, yarışa kalan gün, uyum, toparlanma, kilo trendi grafiği, koç kararı |
 | **Kayıt** | Günlük giriş: kilo, uyku, stres/enerji/açlık (1–10), adım, kardiyo, antrenman, FatSecret gün sonu makroları, not. Kayıttan sonra günlük geri bildirim |
+| **Antrenman** | Hazır programlar, set/kilo/tekrar/RIR kaydı (taslak otomatik saklanır), bir sonraki seans için ağırlık önerisi, kas grubu başına haftalık hacim, güç gelişimi (e1RM), plato ve deload uyarıları |
 | **Haftalar** | Her haftanın özeti ve o haftaya ait koç değerlendirmesi |
 | **Geçmiş** | Tüm günlük kayıtlar, düzenleme |
 | **Ayarlar** | Profil, yarış takvimi, hedef hız, günlük hedefler, hedef değişiklik geçmişi, JSON yedek, CSV dışa aktarma, Google Sheets'ten yapıştırarak/CSV ile içe aktarma |
@@ -54,12 +55,29 @@ altında olması.
 > Bu sistem genel kurallara dayanan bir karar desteğidir. Tıbbi tavsiye yerine geçmez. Sağlık sorunlarında
 > ve peak week uygulamalarında hekim ve koçla birlikte karar ver.
 
+## Antrenman koçu (`js/training.js`)
+
+- **Programlar**: full body (3 gün), üst/alt (4 gün), push/pull/legs (6 gün). Her hareketin set sayısı,
+  tekrar aralığı ve hedef RIR'ı var. Sıradaki gün otomatik vurgulanır.
+- **Çift ilerleme**: o ağırlıktaki tüm setler üst tekrara ulaştıysa ağırlık artar (bileşik hareketlerde +%2.5,
+  en az 2.5 kg; izole hareketlerde +%5, en az 1 kg). Aralık içindeysen aynı ağırlıkla +1 tekrar hedeflenir.
+  Alt tekrarın altında kalırsan ağırlık sabit kalır, bu iki seans üst üste olursa %5 azaltılır.
+- **Plato**: bir hareketin son 3 seanstaki en iyi e1RM'i (Epley) önceki en iyisini geçmiyorsa plato sayılır.
+- **Deload**: takip edilen hareketlerin en az %40'ı platodaysa ya da toparlanma skoru 40'ın altındayken en az iki
+  hareket platodaysa deload haftası önerilir.
+- **Hacim**: kas grubu başına haftalık zor set (RIR ≤ 4). Hedef aralık 10–20 set, yağ yakımı döneminde alt sınır 6.
+  Deficit döneminde güçte %5'ten fazla düşüş varsa uyarı verilir.
+
+Antrenman özeti Pano'daki koç kararına ve haftalık check-in raporuna da eklenir. Kaydedilen antrenman, o günün
+günlük kaydını "antrenman yapıldı" olarak işaretler.
+
 ## Dosya yapısı
 
 ```
 index.html        arayüz
 css/style.css     stil (açık/koyu tema, mobil öncelikli)
-js/coach.js       koç motoru (saf fonksiyonlar)
+js/coach.js       beslenme/kilo koç motoru (saf fonksiyonlar)
+js/training.js    antrenman koçu: programlar, ilerleme, hacim, plato
 js/storage.js     localStorage kalıcılığı
 js/app.js         ekranlar ve etkileşim
 tests/            node:test testleri
