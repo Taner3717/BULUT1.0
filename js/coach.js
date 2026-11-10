@@ -363,3 +363,65 @@ export function toCSV(entries) {
   const rows = sortEntries(entries).map((e) => CSV_FIELDS.map((f) => esc(e[f])).join(','));
   return [CSV_HEADERS.join(','), ...rows].join('\n');
 }
+
+// Google Sheets / CSV içe aktarma. Ayraç: sekme, noktalı virgül veya virgül. Ondalık virgül desteklenir.
+// Tarih: YYYY-MM-DD veya GG.AA.YYYY / GG/AA/YYYY.
+const HEADER_ALIASES = {
+  date: ['tarih', 'date', 'gün', 'gun'], weight: ['kilo', 'weight', 'ağırlık', 'agirlik'], sleep: ['uyku', 'sleep'],
+  stress: ['stres', 'stress'], energy: ['enerji', 'energy'], hunger: ['açlık', 'aclik', 'hunger'],
+  cardioMin: ['kardiyo', 'kardiyo (dk)', 'cardio'], steps: ['adım', 'adim', 'steps'], kcal: ['kalori', 'kcal'],
+  protein: ['protein'], carbs: ['karb', 'karbonhidrat', 'carbs'], fat: ['yağ', 'yag', 'fat'],
+  trained: ['antrenman', 'training'], note: ['not', 'note', 'notlar'],
+};
+
+function splitRow(line, sep) {
+  const out = [];
+  let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) {
+      if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === sep) { out.push(cur); cur = ''; } else cur += c;
+  }
+  out.push(cur);
+  return out.map((s) => s.trim());
+}
+
+export function parseDateTR(s) {
+  s = (s || '').trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return null;
+}
+
+export function parseCSV(text) {
+  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return { entries: [], skipped: 0, columns: [] };
+  const head = lines[0];
+  const sep = head.includes('\t') ? '\t' : head.split(';').length > head.split(',').length ? ';' : ',';
+  const headers = splitRow(head, sep).map((h) => h.toLowerCase());
+  const map = headers.map((h) => Object.keys(HEADER_ALIASES).find((k) => HEADER_ALIASES[k].some((a) => h === a || h.startsWith(a + ' '))) || null);
+  if (!map.includes('date')) throw new Error('Tarih sütunu bulunamadı');
+  const entries = [];
+  let skipped = 0;
+  for (const line of lines.slice(1)) {
+    const cells = splitRow(line, sep);
+    const e = {};
+    map.forEach((k, i) => {
+      if (!k) return;
+      const raw = cells[i] ?? '';
+      if (k === 'date') e.date = parseDateTR(raw);
+      else if (k === 'note') e.note = raw;
+      else if (k === 'trained') e.trained = /^(evet|e|x|1|true|var|✓)$/i.test(raw);
+      else {
+        const v = raw === '' ? null : Number(raw.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+        e[k] = Number.isFinite(v) ? v : null;
+      }
+    });
+    if (e.date) entries.push(e); else skipped++;
+  }
+  return { entries, skipped, columns: map.filter(Boolean) };
+}

@@ -125,3 +125,23 @@ test('yardımcılar', () => {
   const w = weeklySummaries(twoWeeks(80, 79.4), p)[1];
   assert.ok(weeklyReport(w, evaluateWeek(w, p, '2026-01-19'), p, '2026-01-19').includes('Hafta 2'));
 });
+
+import { parseCSV, parseDateTR } from '../js/coach.js';
+
+test('CSV içe aktarma: Sheets yapıştırma (sekme, ondalık virgül, TR tarih)', () => {
+  const text = 'Tarih\tKilo\tUyku\tAdım\tKalori\tAntrenman\tNot\n10.11.2026\t80,4\t7,5\t12.500\t2400\tevet\tiyi\n11.11.2026\t80,1\t\t9000\t2350\t\t\nbozuk\t1';
+  const r = parseCSV(text);
+  assert.equal(r.entries.length, 2);
+  assert.equal(r.skipped, 1);
+  assert.deepEqual(r.entries[0], { date: '2026-11-10', weight: 80.4, sleep: 7.5, steps: 12500, kcal: 2400, trained: true, note: 'iyi' });
+  assert.equal(r.entries[1].sleep, null);
+  assert.equal(r.entries[1].trained, false);
+});
+
+test('CSV içe aktarma: kendi dışa aktarımımızla gidiş-dönüş', () => {
+  const src = [{ date: '2026-01-01', weight: 80.5, sleep: 7, stress: 4, energy: 7, hunger: 5, cardioMin: 20, steps: 10000, kcal: 2400, protein: 200, carbs: 250, fat: 65, trained: true, note: 'a, "b"' }];
+  const r = parseCSV(toCSV(src));
+  assert.deepEqual(r.entries[0], src[0]);
+  assert.equal(parseDateTR('2026-1-5'), '2026-01-05');
+  assert.throws(() => parseCSV('Kilo\n80'));
+});

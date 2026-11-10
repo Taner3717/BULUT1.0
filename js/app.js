@@ -1,6 +1,6 @@
 import {
   fmt, addDays, daysBetween, round, sortEntries, movingAverage, weeklySummaries, evaluateWeek,
-  projection, phaseOf, dailyFeedback, weeklyReport, toCSV, kcalFromMacros,
+  projection, phaseOf, dailyFeedback, weeklyReport, toCSV, parseCSV, kcalFromMacros,
 } from './coach.js';
 import { load, save, normalize, emptyState, upsertEntry, removeEntry } from './storage.js';
 
@@ -286,6 +286,33 @@ $('#reset').onclick = () => {
   state = emptyState();
   persist();
   render();
+};
+
+function importCSV(text) {
+  try {
+    const { entries, skipped, columns } = parseCSV(text);
+    if (!entries.length) { $('#import-result').textContent = 'Geçerli satır bulunamadı.'; return; }
+    let added = 0, updated = 0;
+    for (const e of entries) {
+      const cur = state.entries.find((x) => x.date === e.date);
+      const clean = Object.fromEntries(Object.entries(e).filter(([, v]) => v !== null && v !== '' && v !== undefined));
+      if (cur) { Object.assign(cur, clean); updated++; } else { state.entries.push({ trained: false, note: '', ...e }); added++; }
+    }
+    const sorted = sortEntries(state.entries);
+    if (!state.profile.startDate) state.profile.startDate = sorted[0].date;
+    if (!state.profile.startWeight) state.profile.startWeight = sorted.find((x) => x.weight)?.weight || 0;
+    persist();
+    $('#import-result').textContent = `${added} yeni, ${updated} güncellenen kayıt${skipped ? `, ${skipped} satır atlandı` : ''}. Sütunlar: ${columns.join(', ')}`;
+    toast('İçe aktarıldı');
+  } catch (err) {
+    $('#import-result').textContent = `Hata: ${err.message}`;
+  }
+}
+$('#import-csv-btn').onclick = () => importCSV($('#import-text').value);
+$('#import-csv-file').onchange = async (e) => {
+  const f = e.target.files[0];
+  if (f) importCSV(await f.text());
+  e.target.value = '';
 };
 
 // ---------- Örnek veri ----------

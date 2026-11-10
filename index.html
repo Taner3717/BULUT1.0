@@ -121,6 +121,16 @@
           <button class="ghost danger" id="reset">Tüm veriyi sil</button>
         </div>
       </div>
+      <div class="card">
+        <h2>Google Sheets'ten içe aktar</h2>
+        <p class="muted">Sheets'te başlık satırı dahil satırları seçip kopyala ve buraya yapıştır ya da CSV dosyası seç. Tanınan başlıklar: Tarih, Kilo, Uyku, Stres, Enerji, Açlık, Kardiyo, Adım, Kalori, Protein, Karb, Yağ, Antrenman, Not. Aynı tarihli kayıtlarda sadece dolu hücreler güncellenir.</p>
+        <textarea id="import-text" rows="5" placeholder="Tarih&#9;Kilo&#9;Uyku&#9;Adım&#10;10.11.2026&#9;80,4&#9;7,5&#9;12000"></textarea>
+        <div class="row wrap">
+          <button id="import-csv-btn">İçe aktar</button>
+          <label class="button ghost">CSV dosyası seç<input type="file" id="import-csv-file" accept=".csv,.tsv,.txt,text/csv" hidden></label>
+        </div>
+        <p class="muted" id="import-result"></p>
+      </div>
     </section>
   </main>
 

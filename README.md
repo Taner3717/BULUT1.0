@@ -21,7 +21,7 @@ GitHub Pages ile de yayınlanabilir (statik dosyalar, derleme adımı yok).
 | **Kayıt** | Günlük giriş: kilo, uyku, stres/enerji/açlık (1–10), adım, kardiyo, antrenman, FatSecret gün sonu makroları, not. Kayıttan sonra günlük geri bildirim |
 | **Haftalar** | Her haftanın özeti ve o haftaya ait koç değerlendirmesi |
 | **Geçmiş** | Tüm günlük kayıtlar, düzenleme |
-| **Ayarlar** | Profil, yarış takvimi, hedef hız, günlük hedefler, hedef değişiklik geçmişi, JSON yedek, CSV (Google Sheets) dışa aktarma |
+| **Ayarlar** | Profil, yarış takvimi, hedef hız, günlük hedefler, hedef değişiklik geçmişi, JSON yedek, CSV dışa aktarma, Google Sheets'ten yapıştırarak/CSV ile içe aktarma |
 
 ## Koç karar motoru (`js/coach.js`)
 
