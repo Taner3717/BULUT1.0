@@ -89,9 +89,9 @@ export function weekStart(profile, entries) {
   return sorted.length ? sorted[0].date : null;
 }
 
-export function summarizeWeek(weekEntries, targets) {
+export function summarizeWeek(weekEntries, targets, targetsFn = null) {
   const pick = (k) => mean(weekEntries.map((e) => e[k]));
-  const adh = weekEntries.map((e) => dayAdherence(e, targets)).filter(isNum);
+  const adh = weekEntries.map((e) => dayAdherence(e, targetsFn ? targetsFn(e.date) : targets)).filter(isNum);
   const s = {
     days: weekEntries.length,
     weighIns: weekEntries.filter((e) => isNum(e.weight)).length,
@@ -113,7 +113,8 @@ export function summarizeWeek(weekEntries, targets) {
   return s;
 }
 
-export function weeklySummaries(entries, profile) {
+// targetsFn(date) verilirse uyum o günün etkin hedeflerine göre (refeed, diyet molası, peak week) hesaplanır
+export function weeklySummaries(entries, profile, targetsFn = null) {
   const start = weekStart(profile, entries);
   if (!start) return [];
   const sorted = sortEntries(entries).filter((e) => e.date >= start);
@@ -124,7 +125,7 @@ export function weeklySummaries(entries, profile) {
     const from = addDays(start, i * 7);
     const to = addDays(from, 6);
     const wk = sorted.filter((e) => e.date >= from && e.date <= to);
-    const summary = summarizeWeek(wk, profile.targets);
+    const summary = summarizeWeek(wk, profile.targets, targetsFn);
     const prev = weeks[weeks.length - 1];
     if (prev && isNum(prev.avgWeight) && isNum(summary.avgWeight)) {
       summary.changeKg = round(summary.avgWeight - prev.avgWeight, 2);
@@ -184,6 +185,14 @@ export function evaluateWeek(week, profile, today = fmt(new Date()), extra = {})
   }
 
   if (profile.goal === 'cut') projectionCheck(result, profile, bw, today);
+
+  // Bu hafta ya da önceki hafta diyet molası varsa kilo değişimi su/glikojenden etkilenir
+  if (extra.breakDays >= 3) {
+    result.status = 'break';
+    result.headline = 'Diyet molası haftası: kilo değişimi su ve glikojenden etkilenir, karar verilmez.';
+    result.decisions.push({ type: 'hold', title: 'Değişiklik yok', detail: 'Moladan sonraki ilk tam haftanın verisiyle yeniden değerlendirilir. 0.5–1 kg geçici artış normaldir.' });
+    return result;
+  }
 
   if (isNum(week.adherence) && week.adherence < 80) {
     result.status = 'adherence';

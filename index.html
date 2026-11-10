@@ -26,6 +26,7 @@
         <p>Başlamak için <b>Ayarlar</b>'dan profilini ve hedeflerini gir, sonra her sabah <b>Kayıt</b> ekranından günlük verini ekle. Denemek istersen örnek veri yükleyebilirsin.</p>
         <div class="row"><button data-go="settings">Profili ayarla</button><button class="ghost" id="demo-btn">Örnek veri yükle</button></div>
       </div>
+      <div id="today-banner" class="today-banner hidden"></div>
       <div class="stats" id="stats"></div>
       <div class="card">
         <div class="card-head"><h2>Kilo trendi</h2><span class="muted" id="chart-legend"></span></div>
@@ -81,6 +82,10 @@
         <div class="row"><button type="submit">Ölçüyü kaydet</button><button type="button" class="ghost danger hidden" id="measure-delete">Sil</button></div>
         <div class="table-wrap"><table id="measure-history"></table></div>
       </form>
+      <div class="card">
+        <div class="card-head"><h2>Geçmiş kayıtlar</h2><span class="muted" id="history-count"></span></div>
+        <div class="table-wrap"><table id="history"></table></div>
+      </div>
     </section>
 
     <!-- ANTRENMAN -->
@@ -93,17 +98,26 @@
       <div class="card" id="train-history"></div>
     </section>
 
-    <!-- HAFTALAR -->
-    <section id="view-weeks" class="view">
+    <!-- İLERLEME -->
+    <section id="view-progress" class="view">
+      <div class="card" id="photos-card">
+        <div class="card-head"><h2>İlerleme fotoğrafları</h2>
+          <label class="button">Fotoğraf ekle<input type="file" id="photo-input" accept="image/*" multiple hidden></label></div>
+        <div class="row wrap photo-opts">
+          <label>Tarih<input type="date" id="photo-date"></label>
+          <label>Poz<select id="photo-pose"></select></label>
+        </div>
+        <p class="muted">Her hafta aynı ışıkta, aynı açıdan, sabah aç karnına çek. Fotoğraflar küçültülüp yalnızca bu cihazda saklanır; JSON yedeğine dahil değildir.</p>
+        <div id="photo-compare"></div>
+        <div id="photo-list"></div>
+      </div>
       <div id="weeks"></div>
     </section>
 
-    <!-- GEÇMİŞ -->
-    <section id="view-history" class="view">
-      <div class="card">
-        <div class="card-head"><h2>Geçmiş kayıtlar</h2><span class="muted" id="history-count"></span></div>
-        <div class="table-wrap"><table id="history"></table></div>
-      </div>
+    <!-- PLAN -->
+    <section id="view-plan" class="view">
+      <div class="card" id="plan-calendar"></div>
+      <div class="card" id="peak-card"></div>
     </section>
 
     <!-- AYARLAR -->
@@ -167,9 +181,9 @@
   <nav class="tabs">
     <button data-go="dash" class="active">Pano</button>
     <button data-go="log">Kayıt</button>
-    <button data-go="train">Antrenman</button>
-    <button data-go="weeks">Haftalar</button>
-    <button data-go="history">Geçmiş</button>
+    <button data-go="train">İdman</button>
+    <button data-go="progress">İlerleme</button>
+    <button data-go="plan">Plan</button>
     <button data-go="settings">Ayarlar</button>
   </nav>
   <div id="toast" class="toast"></div>

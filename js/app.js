@@ -5,8 +5,10 @@ import {
 } from './coach.js';
 import {
   PROGRAMS, EXERCISES, MUSCLES, VOLUME_RANGE, suggestNext, stallStatus, evaluateTraining, nextDayIndex,
-  registerExercises, newExerciseId, allPrograms, cloneProgram, validateProgram,
+  registerExercises, newExerciseId, allPrograms, cloneProgram, validateProgram, sessionsFor, bestE1RM,
 } from './training.js';
+import { EVENT_TYPES, estimateMaintenance, eventOn, eventDaysIn, eventTargets, suggestPlan, peakWeekPlan, peakAdjust, targetsForDate } from './plan.js';
+import { POSES, putPhoto, deletePhoto, resizeImage, photoURL, forgetURL } from './photos.js';
 import { load, save, normalize, emptyState, upsertEntry, removeEntry, upsertMeasurement } from './storage.js';
 
 let state = load();
@@ -53,7 +55,8 @@ function evaluationWeek(weeks) {
 function renderDash() {
   const { profile, entries } = state;
   $('#onboard').classList.toggle('hidden', entries.length > 0);
-  const weeks = weeklySummaries(entries, profile);
+  renderTodayBanner();
+  const weeks = allWeeks();
   const ma = movingAverage(entries);
   const last = ma[ma.length - 1];
   const cur = weeks[weeks.length - 1];
@@ -87,7 +90,7 @@ function renderCoach(weeks) {
     return;
   }
   const waistDelta = waistDeltaFor(wk);
-  const ev = evaluateWeek(wk, state.profile, today(), { waistDelta });
+  const ev = evaluateWeek(wk, state.profile, today(), { waistDelta, breakDays: breakDaysFor(wk) });
   const t = state.profile.targets;
   const n = ev.newTargets;
   const changed = Object.keys(n).some((k) => n[k] !== t[k]);
@@ -177,7 +180,9 @@ function fillLog(date) {
 }
 function syncRange(r) { r.previousElementSibling.textContent = r.value; }
 function feedbackHTML(e) {
-  const fb = dailyFeedback(e, state.profile.targets);
+  const info = targetsInfo(e.date);
+  const fb = dailyFeedback(e, info.targets);
+  if (info.label) fb.unshift({ ok: true, text: `${info.label}: hedef ${info.targets.kcal} kcal · K ${info.targets.carbs} g` });
   return fb.length ? `<ul class="plain">${fb.map((x) => `<li class="${x.ok ? 'ok' : 'warn'}">${x.ok ? '✓' : '!'} ${esc(x.text)}</li>`).join('')}</ul>` : '';
 }
 
@@ -198,6 +203,7 @@ $('#log-form').addEventListener('submit', (e) => {
   persist();
   $('#log-delete').classList.remove('hidden');
   $('#log-feedback').innerHTML = feedbackHTML(entry);
+  renderHistory();
   toast(`${entry.date} kaydedildi`);
 });
 $('#log-delete').onclick = () => {
@@ -206,15 +212,16 @@ $('#log-delete').onclick = () => {
   removeEntry(state, d);
   persist();
   fillLog(d);
+  renderHistory();
   toast('Silindi');
 };
 
 // ---------- Haftalar ----------
 function renderWeeks() {
-  const weeks = weeklySummaries(state.entries, state.profile).reverse();
+  const weeks = allWeeks().reverse();
   if (!weeks.length) { $('#weeks').innerHTML = '<div class="card"><p class="muted">Henüz hafta yok.</p></div>'; return; }
   $('#weeks').innerHTML = weeks.map((w) => {
-    const ev = evaluateWeek(w, state.profile, w.to, { waistDelta: waistDeltaFor(w) });
+    const ev = evaluateWeek(w, state.profile, w.to, { waistDelta: waistDeltaFor(w), breakDays: breakDaysFor(w) });
     return `<details class="card week" ${w === weeks[0] ? 'open' : ''}>
       <summary><b>Hafta ${w.index}</b> <span class="muted">${w.from.slice(5)} → ${w.to.slice(5)}</span>
         <span class="pill st-${ev.status}">${w.avgWeight ?? '–'} kg ${w.changePct != null ? `(${w.changePct > 0 ? '+' : ''}${w.changePct}%)` : ''}</span></summary>
@@ -239,7 +246,7 @@ function renderHistory() {
 }
 $('#history').addEventListener('click', (e) => {
   const d = e.target.dataset.edit;
-  if (d) { go('log'); fillLog(d); }
+  if (d) { fillLog(d); $('#log-form').scrollIntoView({ behavior: 'smooth' }); }
 });
 
 // ---------- Ayarlar ----------
@@ -303,7 +310,8 @@ $('#import-json').onchange = async (e) => {
   }
 };
 $('#reset').onclick = () => {
-  if (!confirm('Tüm veriler silinecek. Emin misin?')) return;
+  if (!confirm('Tüm veriler (fotoğraflar dahil) silinecek. Emin misin?')) return;
+  state.photos.forEach((p) => { deletePhoto(p.id).catch(() => {}); forgetURL(p.id); });
   state = emptyState();
   persist();
   render();
@@ -440,7 +448,7 @@ function renderWorkout() {
 
 function trainingWeekEval() {
   const to = today(), from = addDays(to, -6);
-  const weeks = weeklySummaries(state.entries, state.profile);
+  const weeks = allWeeks();
   return evaluateTraining({ sessions: state.training.sessions, program: program(), from, to, goal: state.profile.goal, recovery: weeks[weeks.length - 1]?.recovery ?? null });
 }
 
@@ -470,9 +478,11 @@ function renderProgress() {
     const ch = round(((last - first) / first) * 100, 1);
     return `<tr><td>${esc(EXERCISES[id].name)}${st.stalled ? ' ⏸' : ''}</td><td>${h.length}</td><td>${last}</td><td>${best}</td><td class="${ch > 0 ? 'up' : ch < 0 ? 'down' : ''}">${ch > 0 ? '+' : ''}${ch}%</td></tr>`;
   }).join('');
-  $('#train-progress').innerHTML = `<h2>Güç gelişimi</h2>${rows
+  $('#train-progress').innerHTML = `<h2>Güç gelişimi</h2>${strengthChartHTML(ids)}${rows
     ? `<div class="table-wrap"><table class="prog"><thead><tr><th>Hareket</th><th>Seans</th><th>Son e1RM</th><th>En iyi</th><th>Değişim</th></tr></thead><tbody>${rows}</tbody></table></div><p class="muted">e1RM: Epley formülüyle tahmini tek tekrar maksimum. ⏸ = son 3 seansta ilerleme yok.</p>`
     : '<p class="muted">Henüz antrenman kaydı yok.</p>'}`;
+  const ss = $('#strength-select');
+  if (ss) ss.onchange = (e) => { strengthEx = e.target.value; renderProgress(); };
 }
 
 function renderTrainHistory() {
@@ -643,6 +653,234 @@ function waistDeltaFor(wk) {
   return wk ? measureDelta(state.measurements, 'waist', wk.from, wk.to) : null;
 }
 
+// ---------- Etkin hedefler (refeed, diyet molası, peak week) ----------
+function planCtx() {
+  const base = weeklySummaries(state.entries, state.profile);
+  const ma = movingAverage(state.entries);
+  const bw = ma[ma.length - 1]?.avg ?? (state.profile.targetWeight || null);
+  const m = estimateMaintenance(base, state.profile);
+  return { bw, maintenance: m.kcal, maintenanceInfo: m, peak: state.plan.peak };
+}
+function targetsInfo(date, ctx = planCtx()) {
+  return targetsForDate(date, state.profile, state.plan.events, ctx);
+}
+function targetsFor(date, ctx) { return targetsInfo(date, ctx).targets; }
+function allWeeks() {
+  const ctx = planCtx();
+  return weeklySummaries(state.entries, state.profile, (d) => targetsFor(d, ctx));
+}
+function breakDaysFor(wk) {
+  return wk ? eventDaysIn(state.plan.events, addDays(wk.from, -7), wk.to, 'dietBreak') : 0;
+}
+
+function renderTodayBanner() {
+  const info = targetsInfo(today());
+  const b = $('#today-banner');
+  if (!info.label) { b.classList.add('hidden'); return; }
+  const t = info.targets;
+  b.classList.remove('hidden');
+  b.innerHTML = `Bugün: ${esc(info.label)} · ${t.kcal} kcal · P ${t.protein} · K ${t.carbs} · Y ${t.fat} <button class="link" data-go="plan">plana git</button>`;
+}
+
+// ---------- Basit çizgi grafik ----------
+function seriesSVG(points, { unit = '', label = '' } = {}) {
+  if (points.length < 2) return '<p class="muted center">Grafik için en az 2 seans gerekli.</p>';
+  const W = 640, H = 200, pl = 42, pr = 10, pt = 10, pb = 24;
+  const vals = points.map((p) => p.v);
+  let min = Math.min(...vals), max = Math.max(...vals);
+  const pad = Math.max(1, (max - min) * 0.1); min -= pad; max += pad;
+  const d0 = points[0].date, span = Math.max(1, daysBetween(d0, points[points.length - 1].date));
+  const x = (d) => pl + (daysBetween(d0, d) / span) * (W - pl - pr);
+  const y = (v) => pt + (1 - (v - min) / (max - min)) * (H - pt - pb);
+  const grid = [0, 1, 2, 3].map((i) => { const v = min + ((max - min) * i) / 3; return `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${pl - 6}" y="${y(v) + 4}" class="axis" text-anchor="end">${Math.round(v)}</text>`; }).join('');
+  const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(p.date).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+  const dots = points.map((p) => `<circle cx="${x(p.date).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.5" class="pt"><title>${p.date}: ${p.v} ${unit}${p.note ? ' · ' + esc(p.note) : ''}</title></circle>`).join('');
+  const labels = [points[0], points[points.length - 1]].map((p, i) => `<text x="${x(p.date)}" y="${H - 6}" class="axis" text-anchor="${i ? 'end' : 'start'}">${p.date.slice(5)}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${grid}<path d="${path}" class="avgline"/>${dots}${labels}</svg>`;
+}
+
+let strengthEx = null;
+function strengthChartHTML(ids) {
+  const withData = ids.filter((id) => stallStatus(state.training.sessions, id).history.length);
+  if (!withData.length) return '';
+  if (!withData.includes(strengthEx)) strengthEx = withData[0];
+  const hist = sessionsFor(state.training.sessions, strengthEx).map((s) => {
+    const sets = s.sets.filter((x) => x.id === strengthEx);
+    const top = sets.reduce((a, b) => ((b.kg || 0) > (a.kg || 0) ? b : a), sets[0]);
+    return { date: s.date, v: bestE1RM(s, strengthEx), note: `en ağır set ${top.kg} kg × ${top.reps}` };
+  }).filter((p) => p.v != null);
+  return `<label class="strength-ctl">Hareket<select id="strength-select">${withData.map((id) => `<option value="${id}" ${id === strengthEx ? 'selected' : ''}>${esc(EXERCISES[id].name)}</option>`).join('')}</select></label>
+    <div class="chart">${seriesSVG(hist, { unit: 'kg e1RM', label: 'Kuvvet gelişimi' })}</div>`;
+}
+
+// ---------- Fotoğraflar ----------
+let compareSel = { pose: 'front', a: null, b: null };
+
+async function renderPhotos() {
+  const sel = $('#photo-pose');
+  if (!sel.options.length) sel.innerHTML = Object.entries(POSES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  if (!$('#photo-date').value) $('#photo-date').value = today();
+  const list = [...state.photos].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const dates = [...new Set(list.map((p) => p.date))];
+  if (!list.length) { $('#photo-list').innerHTML = '<p class="muted">Henüz fotoğraf yok.</p>'; $('#photo-compare').innerHTML = ''; return; }
+
+  // Karşılaştırma: varsayılan ilk ve son tarih
+  if (!dates.includes(compareSel.a)) compareSel.a = dates[dates.length - 1];
+  if (!dates.includes(compareSel.b)) compareSel.b = dates[0];
+  const opt = (v) => dates.map((d) => `<option ${d === v ? 'selected' : ''}>${d}</option>`).join('');
+  const pick = (date) => list.find((p) => p.date === date && p.pose === compareSel.pose);
+  const pa = pick(compareSel.a), pb = pick(compareSel.b);
+  const wOn = (d) => movingAverage(state.entries).filter((x) => x.date <= d).pop()?.avg;
+  const cap = (d) => `${d}${wOn(d) ? ` · ${wOn(d)} kg` : ''}`;
+  $('#photo-compare').innerHTML = dates.length > 1 ? `<h3 class="sub">Karşılaştır</h3>
+    <div class="compare-ctl">
+      <label>Poz<select id="cmp-pose">${Object.entries(POSES).map(([k, v]) => `<option value="${k}" ${k === compareSel.pose ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      <label>Önce<select id="cmp-a">${opt(compareSel.a)}</select></label>
+      <label>Sonra<select id="cmp-b">${opt(compareSel.b)}</select></label>
+    </div>
+    <div class="compare">
+      <figure>${pa ? `<img data-photo="${pa.id}" alt="Önce">` : '<div class="muted center">Bu poz yok</div>'}<figcaption>${cap(compareSel.a)}</figcaption></figure>
+      <figure>${pb ? `<img data-photo="${pb.id}" alt="Sonra">` : '<div class="muted center">Bu poz yok</div>'}<figcaption>${cap(compareSel.b)}</figcaption></figure>
+    </div>` : '';
+  $('#photo-list').innerHTML = dates.map((d) => `<h3 class="sub">${d}</h3><div class="photo-grid">${list.filter((p) => p.date === d).map((p) =>
+    `<figure><img data-photo="${p.id}" alt="${POSES[p.pose]} ${d}" loading="lazy"><figcaption><span>${POSES[p.pose] || p.pose}</span></figcaption>
+      <button class="icon" data-delphoto="${p.id}" title="Sil">×</button></figure>`).join('')}</div>`).join('');
+
+  for (const img of $$('img[data-photo]', $('#photos-card'))) {
+    try { const u = await photoURL(img.dataset.photo); if (u) img.src = u; else img.alt = 'Fotoğraf bu cihazda yok'; } catch { img.alt = 'Yüklenemedi'; }
+  }
+  ['cmp-pose', 'cmp-a', 'cmp-b'].forEach((id) => {
+    const el = $(`#${id}`);
+    if (el) el.onchange = () => { compareSel = { pose: $('#cmp-pose').value, a: $('#cmp-a').value, b: $('#cmp-b').value }; renderPhotos(); };
+  });
+}
+
+$('#photo-input').onchange = async (e) => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  const date = $('#photo-date').value || today();
+  const poseSel = $('#photo-pose');
+  let pose = poseSel.value, n = 0;
+  const poseKeys = Object.keys(POSES);
+  for (const f of files) {
+    try {
+      const blob = await resizeImage(f);
+      const id = `p_${date}_${Date.now()}_${n}`;
+      await putPhoto(id, blob);
+      state.photos.push({ id, date, pose });
+      n++;
+      // Çoklu seçimde sıradaki poza geç (ön → yan → arka → poz)
+      if (files.length > 1) pose = poseKeys[(poseKeys.indexOf(pose) + 1) % poseKeys.length];
+    } catch (err) {
+      toast(`Fotoğraf eklenemedi: ${err.message}`);
+    }
+  }
+  if (n) { persist(); toast(`${n} fotoğraf eklendi`); }
+  renderPhotos();
+};
+$('#photos-card').addEventListener('click', async (e) => {
+  const id = e.target.dataset.delphoto;
+  if (!id || !confirm('Fotoğraf silinsin mi?')) return;
+  try { await deletePhoto(id); } catch {}
+  forgetURL(id);
+  state.photos = state.photos.filter((p) => p.id !== id);
+  persist();
+  renderPhotos();
+});
+
+// ---------- Plan: takvim ----------
+function renderPlan() {
+  renderCalendar();
+  renderPeak();
+}
+
+function renderCalendar() {
+  const ctx = planCtx();
+  const m = ctx.maintenanceInfo;
+  const evs = [...state.plan.events].sort((a, b) => (a.start < b.start ? -1 : 1));
+  const sugg = suggestPlan(state.profile, today(), state.plan.events);
+  const t = today();
+  $('#plan-calendar').innerHTML = `
+    <div class="card-head"><h2>Diyet molası ve refeed takvimi</h2></div>
+    <p class="muted">Tahmini idame kalorisi: <b>${m.kcal} kcal</b> ${m.estimated ? '(henüz yeterli veri yok, kaba tahmin)' : `(son ${m.weeks} haftanın kalori ve kilo değişiminden)`}. Refeed günü karbonhidrat idameye kadar yükselir, diyet molasında kalori idameye çıkar ve kardiyo yarıya iner. Bu günlerde uyum o günün hedeflerine göre ölçülür; diyet molası haftası ve sonraki hafta için koç kalori kararı vermez.</p>
+    ${evs.length ? `<ul class="events">${evs.map((e) => {
+      const end = addDays(e.start, (e.days || 1) - 1);
+      const tg = eventTargets(e.type, state.profile.targets, ctx.maintenance, ctx.bw);
+      return `<li class="${end < t ? 'past' : ''}"><span><span class="tag ${e.type}">${EVENT_TYPES[e.type]}</span> ${e.start}${e.days > 1 ? ` → ${end} (${e.days} gün)` : ''}<br><small class="muted">${tg.kcal} kcal · K ${tg.carbs} · Y ${tg.fat}</small></span>
+        <button class="icon" data-delev="${e.start}|${e.type}" title="Sil">×</button></li>`;
+    }).join('')}</ul>` : '<p class="muted">Planlanmış gün yok.</p>'}
+    <div class="evform">
+      <label>Tür<select id="ev-type"><option value="refeed">Refeed günü</option><option value="dietBreak">Diyet molası</option></select></label>
+      <label>Başlangıç<input type="date" id="ev-start" value="${addDays(t, 1)}"></label>
+      <label>Gün<input type="number" id="ev-days" min="1" max="14" value="1"></label>
+      <button id="ev-add">Ekle</button>
+    </div>
+    ${sugg.length ? `<div class="row wrap"><button class="ghost" id="ev-suggest">Önerilen takvimi ekle (${sugg.filter((e) => e.type === 'dietBreak').length} mola, ${sugg.filter((e) => e.type === 'refeed').length} refeed)</button></div>` : ''}`;
+  $('#ev-type').onchange = (e) => { $('#ev-days').value = e.target.value === 'dietBreak' ? 7 : 1; };
+  $('#ev-add').onclick = () => {
+    const ev = { type: $('#ev-type').value, start: $('#ev-start').value, days: Math.max(1, Math.min(14, +$('#ev-days').value || 1)) };
+    if (!ev.start) return;
+    for (let i = 0; i < ev.days; i++) if (eventOn(state.plan.events, addDays(ev.start, i))) { toast('Bu tarihlerde zaten planlı bir gün var'); return; }
+    state.plan.events.push(ev); persist(); toast('Takvime eklendi'); renderCalendar();
+  };
+  if (sugg.length) $('#ev-suggest').onclick = () => { state.plan.events.push(...sugg); persist(); toast(`${sugg.length} gün eklendi`); renderCalendar(); };
+  $$('[data-delev]').forEach((b) => (b.onclick = () => {
+    const [start, type] = b.dataset.delev.split('|');
+    state.plan.events = state.plan.events.filter((e) => !(e.start === start && e.type === type));
+    persist(); renderCalendar();
+  }));
+}
+
+// ---------- Plan: peak week ----------
+const LOOKS = { flat: 'Düz', full: 'Dolu', spill: 'Taşmış / bulanık' };
+
+function renderPeak() {
+  const p = state.profile, pk = state.plan.peak;
+  const card = $('#peak-card');
+  if (!p.showDate) { card.innerHTML = '<h2>Peak week</h2><p class="muted">Ayarlar\'dan yarış tarihini gir; son 7 günün planı burada oluşur.</p>'; return; }
+  const ctx = planCtx();
+  const days = peakWeekPlan(p, ctx.bw, pk);
+  const t = today();
+  const until = daysBetween(t, days[0].date);
+  card.innerHTML = `
+    <div class="card-head"><h2>Peak week</h2><span class="muted">${until > 0 ? `${until} gün sonra başlar` : daysBetween(t, p.showDate) < 0 ? 'Yarış geçti' : 'Şu an peak week'}</span></div>
+    <p class="muted">Muhafazakâr yaklaşım: su ve sodyum sabit, karbonhidrat yüklemesi yarıştan önceki ${pk.loadDays} günde. Hesap ${ctx.bw} kg üzerinden yapılır. Diüretik kullanma, suyu kesme. Yüklemeyi yarıştan önce bir prova haftasında denemek en güvenlisidir.</p>
+    <div class="peak-opts">
+      <label>Yükleme günü<select id="pk-days">${[1, 2, 3].map((n) => `<option ${n === pk.loadDays ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label>Karbonhidrat (g/kg)<select id="pk-g">${[5, 6, 7, 8, 9, 10].map((n) => `<option ${n === pk.loadGkg ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    </div>
+    ${days.map((d) => {
+      const checks = pk.checks[d.date] || {};
+      const look = pk.looks[d.date];
+      const adj = peakAdjust(d, look);
+      const showLooks = d.phase !== 'Normal diyet';
+      return `<div class="pday ${d.date === t ? 'today' : ''}">
+        <h3>${d.offset === 0 ? 'Yarış günü' : `${-d.offset} gün kala`} <span class="muted">${d.date}</span> <span class="tag ${d.phase === 'Karbonhidrat yükleme' ? 'load' : ''}">${d.phase}</span></h3>
+        <div class="macros"><div><span>Kalori</span>${d.targets.kcal}</div><div><span>Protein</span>${d.targets.protein} g</div><div><span>Karb</span>${adj && adj.carbs !== d.targets.carbs ? `<s class="muted">${d.targets.carbs}</s> ${adj.carbs}` : d.targets.carbs} g</div><div><span>Yağ</span>${d.targets.fat} g</div></div>
+        <div class="muted">Su ${d.waterL} L · Sodyum: ${esc(d.sodium)} · Lif: ${esc(d.fiber)}</div>
+        <div class="muted">Antrenman: ${esc(d.training)}${d.targets.cardioMin ? ` · kardiyo ${d.targets.cardioMin} dk` : ''}</div>
+        <ul class="check">${d.checklist.map((c, i) => `<li><label><input type="checkbox" data-pkc="${d.date}|${i}" ${checks[i] ? 'checked' : ''}> ${esc(c)}</label></li>`).join('')}</ul>
+        ${showLooks ? `<div class="looks"><span class="muted">Sabah görünüm:</span>${Object.entries(LOOKS).map(([k, v]) => `<button class="${look === k ? '' : 'ghost'}" data-look="${d.date}|${k}">${v}</button>`).join('')}</div>${adj ? `<p class="headline st-${look === 'full' ? 'ok' : 'slow'}">${esc(adj.text)}</p>` : ''}` : ''}
+      </div>`;
+    }).join('')}`;
+  $('#pk-days').onchange = (e) => { pk.loadDays = +e.target.value; persist(); renderPeak(); };
+  $('#pk-g').onchange = (e) => { pk.loadGkg = +e.target.value; persist(); renderPeak(); };
+  card.onchange = (e) => {
+    const k = e.target.dataset.pkc;
+    if (!k) return;
+    const [date, i] = k.split('|');
+    (pk.checks[date] ||= {})[i] = e.target.checked;
+    persist();
+  };
+  card.onclick = (e) => {
+    const k = e.target.dataset.look;
+    if (!k) return;
+    const [date, look] = k.split('|');
+    pk.looks[date] = pk.looks[date] === look ? undefined : look;
+    persist(); renderPeak();
+  };
+}
+
 // ---------- Örnek veri ----------
 $('#demo-btn').onclick = () => {
   const start = addDays(today(), -34);
@@ -674,6 +912,8 @@ $('#demo-btn').onclick = () => {
     s.training.sessions.push({ id: `demo-${i}`, date: addDays(start, i), dayName: day.name, sets, note: '' });
   }
   [85, 84.3, 83.7, 83.1, 82.4].forEach((waist, i) => s.measurements.push({ date: addDays(start, i * 7 + 6), waist, hip: round(98 - i * 0.4, 1), chest: round(104 - i * 0.2, 1), arm: 38.5, thigh: round(60 - i * 0.3, 1), bodyFat: null }));
+  s.plan.events = [{ type: 'refeed', start: addDays(start, 26), days: 1 }, ...suggestPlan(s.profile, today(), [])];
+  state.photos.forEach((p) => { deletePhoto(p.id).catch(() => {}); forgetURL(p.id); });
   state = s;
   persist();
   toast('Örnek veri yüklendi');
@@ -687,9 +927,10 @@ function render() {
   $('#phase').textContent = `${profile.name ? profile.name + ' · ' : ''}${phaseOf(profile, today())}${d != null && d >= 0 ? ` · ${d} gün` : ''}`;
   const active = $('.view.active').id.replace('view-', '');
   if (active === 'dash') renderDash();
-  if (active === 'weeks') renderWeeks();
+  if (active === 'progress') { renderWeeks(); renderPhotos(); }
+  if (active === 'plan') renderPlan();
   if (active === 'train') renderTrain();
-  if (active === 'history') renderHistory();
+  if (active === 'log') renderHistory();
   if (active === 'settings') fillProfile();
   if (active === 'log' && !$('#log-form').date.value) fillLog(today());
   if (active === 'log' && !$('#measure-form').date.value) fillMeasure(today());

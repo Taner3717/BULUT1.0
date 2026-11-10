@@ -4,7 +4,8 @@ const KEY = 'bulut.v1';
 
 export function emptyState() {
   return {
-    profile: structuredClone(DEFAULT_PROFILE), entries: [], measurements: [],
+    profile: structuredClone(DEFAULT_PROFILE), entries: [], measurements: [], photos: [],
+    plan: { events: [], peak: { loadDays: 2, loadGkg: 7, checks: {}, looks: {} } },
     training: { programId: 'upperLower4', sessions: [], draft: null, customPrograms: {}, customExercises: {} },
   };
 }
@@ -25,7 +26,15 @@ export function normalize(raw) {
     customExercises: t.customExercises && typeof t.customExercises === 'object' ? t.customExercises : {},
   };
   const measurements = Array.isArray(raw.measurements) ? raw.measurements.filter((m) => m && /^\d{4}-\d{2}-\d{2}$/.test(m.date)) : [];
-  return { profile, entries, measurements, training };
+  const pl = raw.plan || {};
+  const plan = {
+    events: Array.isArray(pl.events) ? pl.events.filter((e) => e && e.start && ['refeed', 'dietBreak'].includes(e.type)) : [],
+    peak: { ...base.plan.peak, ...(pl.peak || {}) },
+  };
+  plan.peak.checks = plan.peak.checks && typeof plan.peak.checks === 'object' ? plan.peak.checks : {};
+  plan.peak.looks = plan.peak.looks && typeof plan.peak.looks === 'object' ? plan.peak.looks : {};
+  const photos = Array.isArray(raw.photos) ? raw.photos.filter((x) => x && x.id && x.date) : [];
+  return { profile, entries, measurements, photos, plan, training };
 }
 
 export function load() {

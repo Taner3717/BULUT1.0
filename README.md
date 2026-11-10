@@ -20,11 +20,11 @@ GitHub Pages ile de yayınlanabilir (statik dosyalar, derleme adımı yok).
 
 | Ekran | İçerik |
 |---|---|
-| **Pano** | 7 günlük ortalama kilo, haftalık/toplam değişim, yarışa kalan gün, uyum, toparlanma, kilo trendi grafiği, koç kararı |
-| **Kayıt** | Günlük giriş: kilo, uyku, stres/enerji/açlık (1–10), adım, kardiyo, antrenman, FatSecret gün sonu makroları, not. Kayıttan sonra günlük geri bildirim. Haftalık vücut ölçüleri (bel, kalça, göğüs, kol, bacak, yağ %) ve değişim tablosu |
-| **Antrenman** | Hazır ya da kendi oluşturduğun programlar (program düzenleyici, kütüphaneye özel hareket ekleme), set/kilo/tekrar/RIR kaydı (taslak otomatik saklanır), bir sonraki seans için ağırlık önerisi, kas grubu başına haftalık hacim, güç gelişimi (e1RM), plato ve deload uyarıları |
-| **Haftalar** | Her haftanın özeti ve o haftaya ait koç değerlendirmesi |
-| **Geçmiş** | Tüm günlük kayıtlar, düzenleme |
+| **Pano** | Bugünün özel günü (refeed, diyet molası, peak week), 7 günlük ortalama kilo, haftalık/toplam değişim, bel değişimi, yarışa kalan gün, uyum, toparlanma, kilo trendi grafiği, koç kararı |
+| **Kayıt** | Günlük giriş: kilo, uyku, stres/enerji/açlık (1–10), adım, kardiyo, antrenman, FatSecret gün sonu makroları, not. Kayıttan sonra o günün etkin hedeflerine göre geri bildirim. Haftalık vücut ölçüleri (bel, kalça, göğüs, kol, bacak, yağ %), geçmiş kayıtlar |
+| **İdman** | Hazır ya da kendi oluşturduğun programlar (program düzenleyici, kütüphaneye özel hareket ekleme), set/kilo/tekrar/RIR kaydı (taslak otomatik saklanır), bir sonraki seans için ağırlık önerisi, kas grubu başına haftalık hacim, hareket bazında kuvvet grafiği (e1RM), plato ve deload uyarıları |
+| **İlerleme** | İlerleme fotoğrafları (ön, yan, arka, poz) ve iki tarihi yan yana karşılaştırma; haftalık özetler ve koç değerlendirmeleri |
+| **Plan** | Diyet molası ve refeed takvimi (otomatik öneri), peak week planlayıcı |
 | **Ayarlar** | Profil, yarış takvimi, hedef hız, günlük hedefler, hedef değişiklik geçmişi, JSON yedek, CSV dışa aktarma, Google Sheets'ten yapıştırarak/CSV ile içe aktarma |
 
 ## Koç karar motoru (`js/coach.js`)
@@ -78,6 +78,29 @@ altında olması.
 Antrenman özeti Pano'daki koç kararına ve haftalık check-in raporuna da eklenir. Kaydedilen antrenman, o günün
 günlük kaydını "antrenman yapıldı" olarak işaretler.
 
+## Plan: diyet molası, refeed ve peak week (`js/plan.js`)
+
+- **İdame kalorisi tahmini**: son 3 güvenilir haftada `ort. kalori − haftalık değişim × 7700 / 7`.
+- **Refeed günü**: karbonhidrat idameye kadar (en az +%30, en fazla 2 katı) çıkar, yağ biraz düşer (≥0.6 g/kg).
+- **Diyet molası**: kalori idameye çıkar (artışın %70'i karbonhidrat, %30'u yağ), kardiyo yarıya iner.
+- **Otomatik öneri** (hazırlık dönemi): her 8 haftada bir 7 günlük diyet molası (yarışa 5 haftadan fazla varken)
+  ve son 8 haftada haftada bir refeed günü. Var olan planla çakışmaz.
+- Bu günlerde günlük geri bildirim ve haftalık uyum **o günün hedeflerine** göre hesaplanır. Diyet molası
+  olan haftada ve sonraki haftada koç kalori kararı vermez (su/glikojen etkisi).
+- **Peak week** (yarıştan önceki 6 gün + yarış günü), muhafazakâr yaklaşım:
+  - Su (~0.05 L/kg, en az 3 L) ve sodyum her gün sabit; kesme yok, diüretik yok.
+  - Yarıştan önceki 1–3 günde karbonhidrat yüklemesi (5–10 g/kg, varsayılan 2 gün × 7 g/kg), düşük yağ,
+    düşük–orta lif. Yarış günü ~3 g/kg küçük öğünler.
+  - Günlük antrenman planı (son bacak 5 gün kala), günlük kontrol listesi.
+  - Sabah görünümüne göre ayar: düz → karbonhidrat +%25, taşmış/bulanık → −%40, dolu → değişiklik yok.
+  - Peak week günlerinin hedefleri Pano ve Kayıt ekranlarına otomatik yansır.
+
+## İlerleme fotoğrafları (`js/photos.js`)
+
+Fotoğraflar uzun kenarı 1080 px olacak şekilde küçültülüp JPEG olarak **IndexedDB'de, yalnızca o cihazda**
+saklanır (sunucuya gönderilmez, JSON yedeğe dahil değildir). Birden fazla fotoğraf seçildiğinde pozlar sırayla
+atanır (ön → yan → arka → poz). Karşılaştırmada her fotoğrafın altında o tarihteki 7 günlük ortalama kilo görünür.
+
 ## Dosya yapısı
 
 ```
@@ -85,6 +108,8 @@ index.html        arayüz
 css/style.css     stil (açık/koyu tema, mobil öncelikli)
 js/coach.js       beslenme/kilo koç motoru (saf fonksiyonlar)
 js/training.js    antrenman koçu: programlar, ilerleme, hacim, plato
+js/plan.js        diyet molası/refeed takvimi, idame tahmini, peak week
+js/photos.js      ilerleme fotoğrafları (IndexedDB)
 js/storage.js     localStorage kalıcılığı
 sw.js             çevrimdışı önbellek (PWA)
 manifest.webmanifest, icons/  ana ekrana ekleme
