@@ -187,3 +187,50 @@ export function nextDayIndex(program, sessions) {
   const i = program.days.findIndex((d) => d.name === last.dayName);
   return i < 0 ? 0 : (i + 1) % program.days.length;
 }
+
+// ---------- Özel program ve hareketler ----------
+export const BUILTIN_EXERCISE_IDS = Object.keys(EXERCISES);
+
+// Kullanıcının eklediği hareketleri kütüphaneye ekler (id'ler 'c_' ile başlar)
+export function registerExercises(custom = {}) {
+  for (const [id, e] of Object.entries(custom)) {
+    if (e && e.name && MUSCLES[e.muscle]) EXERCISES[id] = { name: e.name, muscle: e.muscle, type: e.type === 'i' ? 'i' : 'c', custom: true };
+  }
+}
+
+export function newExerciseId(name, existing = EXERCISES) {
+  const base = 'c_' + name.toLowerCase().normalize('NFKD').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '').slice(0, 24);
+  let id = base, n = 2;
+  while (existing[id]) id = `${base}_${n++}`;
+  return id;
+}
+
+export function allPrograms(custom = {}) {
+  return { ...PROGRAMS, ...custom };
+}
+
+export function cloneProgram(p, name) {
+  return { name: name ?? `${p.name} (kopya)`, custom: true, days: p.days.map((d) => ({ name: d.name, items: d.items.map((i) => ({ ...i })) })) };
+}
+
+export function validateProgram(p) {
+  const errors = [];
+  if (!p.name?.trim()) errors.push('Program adı boş olamaz.');
+  if (!p.days?.length) errors.push('En az bir gün olmalı.');
+  const names = new Set();
+  (p.days || []).forEach((d, i) => {
+    const label = d.name?.trim() || `${i + 1}. gün`;
+    if (!d.name?.trim()) errors.push(`${i + 1}. günün adı boş.`);
+    if (names.has(d.name)) errors.push(`"${label}" adı iki kez kullanılmış.`);
+    names.add(d.name);
+    if (!d.items?.length) errors.push(`${label}: en az bir hareket ekle.`);
+    (d.items || []).forEach((it) => {
+      const n = EXERCISES[it.id]?.name || it.id;
+      if (!EXERCISES[it.id]) errors.push(`${label}: bilinmeyen hareket (${it.id}).`);
+      if (!(it.sets >= 1 && it.sets <= 10)) errors.push(`${label} / ${n}: set sayısı 1–10 olmalı.`);
+      if (!(it.repMin >= 1 && it.repMax >= it.repMin && it.repMax <= 50)) errors.push(`${label} / ${n}: tekrar aralığı geçersiz.`);
+      if (!(it.rir >= 0 && it.rir <= 5)) errors.push(`${label} / ${n}: RIR 0–5 olmalı.`);
+    });
+  });
+  return errors;
+}

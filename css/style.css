@@ -102,3 +102,21 @@ details.week summary::-webkit-details-marker { display: none; }
 .bar .fill.low { background: var(--warn); } .bar .fill.high { background: var(--bad); }
 .bar .zone { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--muted); border-right: 1px dashed var(--muted); }
 .prog td.up { color: var(--ok); } .prog td.down { color: var(--bad); }
+
+/* Program düzenleyici */
+.edday { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.edday > .row { margin-top: 0; align-items: center; }
+.editem { display: grid; grid-template-columns: 1fr 52px 52px 52px 46px 28px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.editem.head { font-size: 11px; color: var(--muted); }
+.editem input, .editem select { padding: 7px 6px; }
+.editem input { text-align: center; }
+@media (max-width: 480px) {
+  .editem { grid-template-columns: 1fr 1fr 1fr 1fr 28px; }
+  .editem select { grid-column: 1 / -1; }
+  .editem.head span:first-child { grid-column: 1 / -1; display: none; }
+}
+.errors { color: var(--bad); font-size: 13px; }
+.newex { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; }
+@media (max-width: 480px) { .newex { grid-template-columns: 1fr 1fr; } }
+small.down { color: var(--ok); } small.up { color: var(--warn); }
+tfoot th { border-top: 2px solid var(--line); }

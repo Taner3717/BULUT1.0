@@ -145,3 +145,23 @@ test('CSV içe aktarma: kendi dışa aktarımımızla gidiş-dönüş', () => {
   assert.equal(parseDateTR('2026-1-5'), '2026-01-05');
   assert.throws(() => parseCSV('Kilo\n80'));
 });
+
+import { measureDelta, measureTrend } from '../js/coach.js';
+
+test('kilo durdu ama bel inceldi → rekompozisyon, değişiklik yok', () => {
+  const p = profile();
+  const w = weeklySummaries(twoWeeks(80, 79.95), p)[1];
+  const ms = [{ date: '2026-01-11', waist: 84 }, { date: '2026-01-18', waist: 83.2 }];
+  const d = measureDelta(ms, 'waist', w.from, w.to);
+  assert.equal(d, -0.8);
+  const r = evaluateWeek(w, p, '2026-01-19', { waistDelta: d });
+  assert.equal(r.status, 'recomp');
+  assert.deepEqual(r.newTargets, p.targets);
+  assert.equal(evaluateWeek(w, p, '2026-01-19', { waistDelta: 0 }).status, 'slow');
+});
+
+test('ölçü trendi', () => {
+  const t = measureTrend([{ date: '2026-01-01', waist: 85, arm: 38 }, { date: '2026-02-01', waist: 82.5, arm: 38.2 }]);
+  assert.deepEqual(t.delta, { waist: -2.5, arm: 0.2 });
+  assert.equal(measureDelta([{ date: '2026-01-12', waist: 80 }], 'waist', '2026-01-12', '2026-01-18'), null);
+});

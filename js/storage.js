@@ -3,7 +3,10 @@ import { DEFAULT_PROFILE } from './coach.js';
 const KEY = 'bulut.v1';
 
 export function emptyState() {
-  return { profile: structuredClone(DEFAULT_PROFILE), entries: [], training: { programId: 'upperLower4', sessions: [], draft: null } };
+  return {
+    profile: structuredClone(DEFAULT_PROFILE), entries: [], measurements: [],
+    training: { programId: 'upperLower4', sessions: [], draft: null, customPrograms: {}, customExercises: {} },
+  };
 }
 
 export function normalize(raw) {
@@ -18,8 +21,11 @@ export function normalize(raw) {
     programId: t.programId || base.training.programId,
     sessions: Array.isArray(t.sessions) ? t.sessions.filter((x) => x && x.date && Array.isArray(x.sets)) : [],
     draft: t.draft && Array.isArray(t.draft.items) ? t.draft : null,
+    customPrograms: t.customPrograms && typeof t.customPrograms === 'object' ? t.customPrograms : {},
+    customExercises: t.customExercises && typeof t.customExercises === 'object' ? t.customExercises : {},
   };
-  return { profile, entries, training };
+  const measurements = Array.isArray(raw.measurements) ? raw.measurements.filter((m) => m && /^\d{4}-\d{2}-\d{2}$/.test(m.date)) : [];
+  return { profile, entries, measurements, training };
 }
 
 export function load() {
@@ -48,4 +54,10 @@ export function upsertEntry(state, entry) {
 
 export function removeEntry(state, date) {
   state.entries = state.entries.filter((e) => e.date !== date);
+}
+
+export function upsertMeasurement(state, m) {
+  const i = state.measurements.findIndex((x) => x.date === m.date);
+  if (i >= 0) state.measurements[i] = m;
+  else state.measurements.push(m);
 }

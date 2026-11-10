@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f172a">
   <title>BULUT 1.0 Koçluk</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BULUT">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -61,11 +66,27 @@
         <div class="row"><button type="submit">Kaydet</button><button type="button" class="ghost danger hidden" id="log-delete">Bu günü sil</button></div>
         <div id="log-feedback" class="feedback"></div>
       </form>
+      <form id="measure-form" class="card" autocomplete="off">
+        <div class="card-head"><h2>Vücut ölçüleri</h2><input type="date" name="date" required></div>
+        <p class="muted">Haftada bir, aynı gün ve saatte, sabah aç karnına ölç. Bel: göbek hizasından, nefes verdikten sonra.</p>
+        <fieldset>
+          <legend>cm</legend>
+          <label>Bel<input name="waist" type="number" step="any" inputmode="decimal"></label>
+          <label>Kalça<input name="hip" type="number" step="any" inputmode="decimal"></label>
+          <label>Göğüs<input name="chest" type="number" step="any" inputmode="decimal"></label>
+          <label>Kol<input name="arm" type="number" step="any" inputmode="decimal"></label>
+          <label>Bacak<input name="thigh" type="number" step="any" inputmode="decimal"></label>
+          <label>Yağ % (ops.)<input name="bodyFat" type="number" step="any" inputmode="decimal"></label>
+        </fieldset>
+        <div class="row"><button type="submit">Ölçüyü kaydet</button><button type="button" class="ghost danger hidden" id="measure-delete">Sil</button></div>
+        <div class="table-wrap"><table id="measure-history"></table></div>
+      </form>
     </section>
 
     <!-- ANTRENMAN -->
     <section id="view-train" class="view">
       <div class="card" id="train-program"></div>
+      <div id="train-editor"></div>
       <div id="train-workout"></div>
       <div class="card" id="train-week"></div>
       <div class="card" id="train-progress"></div>

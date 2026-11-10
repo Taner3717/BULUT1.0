@@ -11,6 +11,9 @@ npm start          # http://localhost:8080
 npm test           # koç motoru testleri
 ```
 
+**Telefona kurma:** Uygulama PWA'dır. GitHub Pages gibi bir HTTPS adresinden açıp tarayıcı menüsünden
+"Ana ekrana ekle" dersen uygulama gibi açılır ve ilk açılıştan sonra internetsiz de çalışır.
+
 GitHub Pages ile de yayınlanabilir (statik dosyalar, derleme adımı yok).
 
 ## Ekranlar
@@ -18,8 +21,8 @@ GitHub Pages ile de yayınlanabilir (statik dosyalar, derleme adımı yok).
 | Ekran | İçerik |
 |---|---|
 | **Pano** | 7 günlük ortalama kilo, haftalık/toplam değişim, yarışa kalan gün, uyum, toparlanma, kilo trendi grafiği, koç kararı |
-| **Kayıt** | Günlük giriş: kilo, uyku, stres/enerji/açlık (1–10), adım, kardiyo, antrenman, FatSecret gün sonu makroları, not. Kayıttan sonra günlük geri bildirim |
-| **Antrenman** | Hazır programlar, set/kilo/tekrar/RIR kaydı (taslak otomatik saklanır), bir sonraki seans için ağırlık önerisi, kas grubu başına haftalık hacim, güç gelişimi (e1RM), plato ve deload uyarıları |
+| **Kayıt** | Günlük giriş: kilo, uyku, stres/enerji/açlık (1–10), adım, kardiyo, antrenman, FatSecret gün sonu makroları, not. Kayıttan sonra günlük geri bildirim. Haftalık vücut ölçüleri (bel, kalça, göğüs, kol, bacak, yağ %) ve değişim tablosu |
+| **Antrenman** | Hazır ya da kendi oluşturduğun programlar (program düzenleyici, kütüphaneye özel hareket ekleme), set/kilo/tekrar/RIR kaydı (taslak otomatik saklanır), bir sonraki seans için ağırlık önerisi, kas grubu başına haftalık hacim, güç gelişimi (e1RM), plato ve deload uyarıları |
 | **Haftalar** | Her haftanın özeti ve o haftaya ait koç değerlendirmesi |
 | **Geçmiş** | Tüm günlük kayıtlar, düzenleme |
 | **Ayarlar** | Profil, yarış takvimi, hedef hız, günlük hedefler, hedef değişiklik geçmişi, JSON yedek, CSV dışa aktarma, Google Sheets'ten yapıştırarak/CSV ile içe aktarma |
@@ -36,6 +39,7 @@ ortalamasının önceki haftaya göre **yüzde değişimine** dayanır. Kurallar
 4. **Yarış sonrası**: reverse diet, haftalık +150 kcal.
 5. **Hazırlık (cut)**:
    - Toparlanma skoru < 40 ve kayıp makulse: **refeed / diyet molası**.
+   - Kayıp < hedefin yarısı ama **bel o hafta ≥0.5 cm inceldiyse**: değişiklik yok (rekompozisyon / su tutulumu).
    - Kayıp < hedefin yarısı: açık kadar kalori düşülür (100 kcal ile kalorinin %10'u arası). %75'i karbonhidrattan,
      %25'i yağdan alınır. Yağ 0.6 g/kg'ın, karbonhidrat 80 g'ın altına inmez. Kalan açık adım hedefiyle kapatılır.
      Protein sabit kalır.
@@ -65,6 +69,9 @@ altında olması.
 - **Plato**: bir hareketin son 3 seanstaki en iyi e1RM'i (Epley) önceki en iyisini geçmiyorsa plato sayılır.
 - **Deload**: takip edilen hareketlerin en az %40'ı platodaysa ya da toparlanma skoru 40'ın altındayken en az iki
   hareket platodaysa deload haftası önerilir.
+- **Program düzenleyici**: hazır programı kopyalayıp gün/hareket ekleyip çıkarabilir, set, tekrar aralığı ve
+  RIR'ı değiştirebilirsin. Kütüphanede olmayan hareketleri kas grubu ve türüyle eklersin (hacim ve ilerleme
+  hesaplarına dahil olur). Kaydetmeden önce program doğrulanır.
 - **Hacim**: kas grubu başına haftalık zor set (RIR ≤ 4). Hedef aralık 10–20 set, yağ yakımı döneminde alt sınır 6.
   Deficit döneminde güçte %5'ten fazla düşüş varsa uyarı verilir.
 
@@ -79,6 +86,8 @@ css/style.css     stil (açık/koyu tema, mobil öncelikli)
 js/coach.js       beslenme/kilo koç motoru (saf fonksiyonlar)
 js/training.js    antrenman koçu: programlar, ilerleme, hacim, plato
 js/storage.js     localStorage kalıcılığı
+sw.js             çevrimdışı önbellek (PWA)
+manifest.webmanifest, icons/  ana ekrana ekleme
 js/app.js         ekranlar ve etkileşim
 tests/            node:test testleri
 ```

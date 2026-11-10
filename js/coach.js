@@ -159,7 +159,8 @@ export function phaseOf(profile, today) {
 
 // ---------- Karar motoru ----------
 // Mevcut ve önceki hafta özetine göre öneri ve yeni hedefler üretir.
-export function evaluateWeek(week, profile, today = fmt(new Date())) {
+// extra.waistDelta: haftalık bel ölçüsü değişimi (cm, negatif = incelme)
+export function evaluateWeek(week, profile, today = fmt(new Date()), extra = {}) {
   const t = profile.targets;
   const result = { status: 'ok', headline: '', decisions: [], flags: [], newTargets: { ...t } };
   const bw = week?.avgWeight;
@@ -219,6 +220,12 @@ export function evaluateWeek(week, profile, today = fmt(new Date())) {
       result.status = 'recovery';
       result.headline = `Toparlanma skoru ${week.recovery}/100: kaloriyi kısma, toparlan.`;
       result.decisions.push({ type: 'refeed', title: 'Refeed / diyet molası', detail: 'Haftada 1–2 gün karbonhidratı ~%30–50 artır (yağı düşük tut) ya da 5–7 günlük idame kalorisi molası planla.' });
+      return result;
+    }
+    if (loss < target * 0.5 && isNum(extra.waistDelta) && extra.waistDelta <= -0.5) {
+      result.status = 'recomp';
+      result.headline = `Kilo yavaş (%${round(loss, 2)}/hafta) ama bel ${Math.abs(extra.waistDelta)} cm inceldi: yağ kaybı sürüyor.`;
+      result.decisions.push({ type: 'hold', title: 'Değişiklik yok', detail: 'Tartı su/glikojen nedeniyle gecikebilir. Bir hafta daha bekle; bel de durursa açık artırılır.' });
       return result;
     }
     if (loss < target * 0.5) {
@@ -424,4 +431,28 @@ export function parseCSV(text) {
     if (e.date) entries.push(e); else skipped++;
   }
   return { entries, skipped, columns: map.filter(Boolean) };
+}
+
+// ---------- Vücut ölçüleri ----------
+export const MEASURE_FIELDS = { waist: 'Bel', hip: 'Kalça', chest: 'Göğüs', arm: 'Kol', thigh: 'Bacak', bodyFat: 'Yağ %' };
+
+// [from, to] aralığındaki son ölçü ile bu aralıktan önceki son ölçü arasındaki fark
+export function measureDelta(measurements, field, from, to) {
+  const sorted = sortEntries(measurements).filter((m) => isNum(m[field]));
+  const inWeek = sorted.filter((m) => m.date >= from && m.date <= to).pop();
+  const before = sorted.filter((m) => m.date < from).pop();
+  if (!inWeek || !before) return null;
+  return round(inWeek[field] - before[field], 1);
+}
+
+export function measureTrend(measurements) {
+  const sorted = sortEntries(measurements);
+  if (sorted.length < 2) return null;
+  const first = sorted[0], last = sorted[sorted.length - 1];
+  const out = {};
+  for (const k of Object.keys(MEASURE_FIELDS)) {
+    const a = sorted.find((m) => isNum(m[k])), b = [...sorted].reverse().find((m) => isNum(m[k]));
+    if (a && b && a !== b) out[k] = round(b[k] - a[k], 1);
+  }
+  return { from: first.date, to: last.date, delta: out };
 }

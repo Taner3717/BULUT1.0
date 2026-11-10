@@ -1,11 +1,16 @@
 import {
   fmt, addDays, daysBetween, round, sortEntries, movingAverage, weeklySummaries, evaluateWeek,
   projection, phaseOf, dailyFeedback, weeklyReport, toCSV, parseCSV, kcalFromMacros,
+  MEASURE_FIELDS, measureDelta, measureTrend,
 } from './coach.js';
-import { PROGRAMS, EXERCISES, MUSCLES, VOLUME_RANGE, suggestNext, stallStatus, evaluateTraining, nextDayIndex } from './training.js';
-import { load, save, normalize, emptyState, upsertEntry, removeEntry } from './storage.js';
+import {
+  PROGRAMS, EXERCISES, MUSCLES, VOLUME_RANGE, suggestNext, stallStatus, evaluateTraining, nextDayIndex,
+  registerExercises, newExerciseId, allPrograms, cloneProgram, validateProgram,
+} from './training.js';
+import { load, save, normalize, emptyState, upsertEntry, removeEntry, upsertMeasurement } from './storage.js';
 
 let state = load();
+registerExercises(state.training.customExercises);
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const today = () => fmt(new Date(Date.now() - new Date().getTimezoneOffset() * 60000));
@@ -58,7 +63,10 @@ function renderDash() {
   const stats = [
     ['7 gün ort.', show(last?.avg, ' kg'), last ? `Son tartı ${last.weight} kg` : ''],
     ['Haftalık değişim', cur?.changePct != null ? `${cur.changeKg > 0 ? '+' : ''}${cur.changeKg} kg` : '–', cur?.changePct != null ? `%${cur.changePct}` : 'önceki hafta yok'],
-    ['Toplam', totalChange != null ? `${totalChange > 0 ? '+' : ''}${totalChange} kg` : '–', profile.startWeight ? `Başlangıç ${profile.startWeight} kg` : ''],
+    ['Toplam', totalChange != null ? `${totalChange > 0 ? '+' : ''}${totalChange} kg` : '–', (() => {
+      const w = measureTrend(state.measurements)?.delta.waist;
+      return w != null ? `Bel ${w > 0 ? '+' : ''}${w} cm` : profile.startWeight ? `Başlangıç ${profile.startWeight} kg` : '';
+    })()],
     ['Yarışa', proj ? (proj.daysLeft >= 0 ? `${proj.daysLeft} gün` : 'bitti') : '–', proj && proj.daysLeft > 0 ? `Kalan ${proj.remainingKg} kg · %${proj.requiredPct}/hf` : ''],
     ['Uyum (hafta)', show(cur?.adherence, '%'), `${cur?.weighIns ?? 0}/7 tartı`],
     ['Toparlanma', show(cur?.recovery, '/100'), cur ? `Uyku ${show(cur.avgSleep, ' s')}` : ''],
@@ -78,7 +86,8 @@ function renderCoach(weeks) {
     card.innerHTML = '<h2>Koç</h2><p class="muted">Henüz veri yok.</p>';
     return;
   }
-  const ev = evaluateWeek(wk, state.profile, today());
+  const waistDelta = waistDeltaFor(wk);
+  const ev = evaluateWeek(wk, state.profile, today(), { waistDelta });
   const t = state.profile.targets;
   const n = ev.newTargets;
   const changed = Object.keys(n).some((k) => n[k] !== t[k]);
@@ -105,7 +114,7 @@ function renderCoach(weeks) {
   }
   $('#report-btn').onclick = async () => {
     const tev = trainingWeekEval();
-    const text = weeklyReport(wk, ev, state.profile, today()) + (state.training.sessions.length
+    const text = weeklyReport(wk, ev, state.profile, today()) + (waistDelta != null ? `\nBel değişimi: ${waistDelta > 0 ? '+' : ''}${waistDelta} cm` : '') + (state.training.sessions.length
       ? `\n\nAntrenman (son 7 gün): ${tev.sessions} seans\n` + [...tev.decisions.map((d) => `• ${d.title}`), ...tev.flags.map((f) => `⚠ ${f}`)].join('\n') : '');
     try {
       await navigator.clipboard.writeText(text);
@@ -205,7 +214,7 @@ function renderWeeks() {
   const weeks = weeklySummaries(state.entries, state.profile).reverse();
   if (!weeks.length) { $('#weeks').innerHTML = '<div class="card"><p class="muted">Henüz hafta yok.</p></div>'; return; }
   $('#weeks').innerHTML = weeks.map((w) => {
-    const ev = evaluateWeek(w, state.profile, w.to);
+    const ev = evaluateWeek(w, state.profile, w.to, { waistDelta: waistDeltaFor(w) });
     return `<details class="card week" ${w === weeks[0] ? 'open' : ''}>
       <summary><b>Hafta ${w.index}</b> <span class="muted">${w.from.slice(5)} → ${w.to.slice(5)}</span>
         <span class="pill st-${ev.status}">${w.avgWeight ?? '–'} kg ${w.changePct != null ? `(${w.changePct > 0 ? '+' : ''}${w.changePct}%)` : ''}</span></summary>
@@ -283,6 +292,7 @@ $('#import-json').onchange = async (e) => {
     const data = normalize(JSON.parse(await file.text()));
     if (!confirm(`${data.entries.length} günlük kayıt yüklenecek ve mevcut veri değişecek. Devam?`)) return;
     state = data;
+    registerExercises(state.training.customExercises);
     persist();
     toast('Yedek yüklendi');
     render();
@@ -327,7 +337,8 @@ $('#import-csv-file').onchange = async (e) => {
 };
 
 // ---------- Antrenman ----------
-function program() { return PROGRAMS[state.training.programId] || PROGRAMS.upperLower4; }
+function programs() { return allPrograms(state.training.customPrograms); }
+function program() { return programs()[state.training.programId] || PROGRAMS.upperLower4; }
 
 function renderTrain() {
   const tr = state.training;
@@ -335,9 +346,11 @@ function renderTrain() {
   const next = nextDayIndex(prog, tr.sessions);
   $('#train-program').innerHTML = `
     <div class="card-head"><h2>Program</h2>
-      <select id="prog-select">${Object.entries(PROGRAMS).map(([id, p]) => `<option value="${id}" ${id === tr.programId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+      <select id="prog-select">${Object.entries(programs()).map(([id, p]) => `<option value="${id}" ${id === tr.programId ? 'selected' : ''}>${esc(p.name)}${p.custom ? ' ★' : ''}</option>`).join('')}</select></div>
     <p class="muted">Sıradaki gün vurgulandı. Ağırlık önerileri son seansına göre çift ilerleme ile hesaplanır.</p>
-    <div class="days">${prog.days.map((d, i) => `<button class="${i === next ? '' : 'ghost'}" data-start="${i}">${esc(d.name)}<small>${d.items.length} hareket · ${d.items.reduce((a, x) => a + x.sets, 0)} set</small></button>`).join('')}</div>`;
+    <div class="days">${prog.days.map((d, i) => `<button class="${i === next ? '' : 'ghost'}" data-start="${i}">${esc(d.name)}<small>${d.items.length} hareket · ${d.items.reduce((a, x) => a + x.sets, 0)} set</small></button>`).join('')}</div>
+    <div class="row wrap"><button class="ghost" id="prog-edit">${prog.custom ? 'Programı düzenle' : 'Kopyala ve düzenle'}</button></div>`;
+  $('#prog-edit').onclick = () => openEditor(programs()[tr.programId] ? tr.programId : 'upperLower4');
   $('#prog-select').onchange = (e) => {
     if (tr.draft && !confirm('Devam eden antrenman taslağı silinecek. Program değişsin mi?')) { e.target.value = tr.programId; return; }
     tr.programId = e.target.value; tr.draft = null; persist(); renderTrain();
@@ -475,6 +488,161 @@ function renderTrainHistory() {
   }));
 }
 
+// ---------- Program düzenleyici ----------
+let editing = null; // { id, program }
+
+function openEditor(fromId) {
+  const tr = state.training;
+  const src = programs()[fromId];
+  if (!src) return;
+  if (src.custom) editing = { id: fromId, program: cloneProgram(src, src.name) };
+  else editing = { id: null, program: cloneProgram(src) };
+  renderEditor();
+  $('#train-editor').scrollIntoView({ behavior: 'smooth' });
+}
+
+function exerciseOptions(selected) {
+  const groups = {};
+  Object.entries(EXERCISES).forEach(([id, e]) => (groups[e.muscle] ||= []).push([id, e]));
+  return Object.entries(groups).map(([m, list]) => `<optgroup label="${MUSCLES[m]}">${list.map(([id, e]) =>
+    `<option value="${id}" ${id === selected ? 'selected' : ''}>${esc(e.name)}${e.custom ? ' ★' : ''}</option>`).join('')}</optgroup>`).join('');
+}
+
+function renderEditor(errors = []) {
+  const box = $('#train-editor');
+  if (!editing) { box.innerHTML = ''; return; }
+  const p = editing.program;
+  box.innerHTML = `<div class="card" id="editor">
+    <div class="card-head"><h2>${editing.id ? 'Programı düzenle' : 'Yeni program'}</h2></div>
+    <label>Program adı<input data-f="name" value="${esc(p.name)}"></label>
+    ${p.days.map((d, di) => `<div class="edday">
+      <div class="row"><input data-f="day" data-d="${di}" value="${esc(d.name)}" aria-label="Gün adı">
+        <button type="button" class="icon" data-act="dayUp" data-d="${di}" title="Yukarı">↑</button>
+        <button type="button" class="icon" data-act="delDay" data-d="${di}" title="Günü sil">×</button></div>
+      <div class="editem head"><span>Hareket</span><span>Set</span><span>Min</span><span>Maks</span><span>RIR</span><span></span></div>
+      ${d.items.map((it, ii) => `<div class="editem">
+        <select data-f="id" data-d="${di}" data-i="${ii}">${exerciseOptions(it.id)}</select>
+        <input data-f="sets" data-d="${di}" data-i="${ii}" type="number" min="1" max="10" value="${it.sets}" aria-label="Set">
+        <input data-f="repMin" data-d="${di}" data-i="${ii}" type="number" min="1" value="${it.repMin}" aria-label="Min tekrar">
+        <input data-f="repMax" data-d="${di}" data-i="${ii}" type="number" min="1" value="${it.repMax}" aria-label="Maks tekrar">
+        <input data-f="rir" data-d="${di}" data-i="${ii}" type="number" min="0" max="5" value="${it.rir}" aria-label="RIR">
+        <button type="button" class="icon" data-act="delItem" data-d="${di}" data-i="${ii}" title="Hareketi sil">×</button></div>`).join('')}
+      <button type="button" class="link" data-act="addItem" data-d="${di}">+ hareket ekle</button>
+    </div>`).join('')}
+    <button type="button" class="ghost" data-act="addDay">+ gün ekle</button>
+    <h2 style="margin-top:16px">Kütüphanede olmayan hareket</h2>
+    <div class="newex">
+      <label>Ad<input id="nx-name" placeholder="ör. Smith incline press"></label>
+      <label>Kas<select id="nx-muscle">${Object.entries(MUSCLES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label>Tür<select id="nx-type"><option value="c">Bileşik</option><option value="i">İzole</option></select></label>
+      <button type="button" class="ghost" data-act="newEx">Ekle</button>
+    </div>
+    ${errors.length ? `<ul class="errors">${errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
+    <div class="row wrap">
+      <button type="button" data-act="save">Kaydet ve kullan</button>
+      <button type="button" class="ghost" data-act="cancel">Vazgeç</button>
+      ${editing.id ? '<button type="button" class="ghost danger" data-act="delete">Programı sil</button>' : ''}
+    </div></div>`;
+
+  const ed = $('#editor');
+  ed.addEventListener('input', (e) => {
+    const t = e.target, f = t.dataset.f;
+    if (!f) return;
+    if (f === 'name') p.name = t.value;
+    else if (f === 'day') p.days[+t.dataset.d].name = t.value;
+    else {
+      const it = p.days[+t.dataset.d].items[+t.dataset.i];
+      it[f] = f === 'id' ? t.value : num(t.value);
+    }
+  });
+  ed.addEventListener('click', (e) => {
+    const a = e.target.dataset.act;
+    if (!a) return;
+    const di = +e.target.dataset.d, ii = +e.target.dataset.i;
+    if (a === 'addItem') p.days[di].items.push({ id: 'bench', sets: 3, repMin: 8, repMax: 12, rir: 2 });
+    else if (a === 'delItem') p.days[di].items.splice(ii, 1);
+    else if (a === 'addDay') p.days.push({ name: `Gün ${p.days.length + 1}`, items: [] });
+    else if (a === 'delDay') { if (!confirm(`"${p.days[di].name}" silinsin mi?`)) return; p.days.splice(di, 1); }
+    else if (a === 'dayUp') { if (di === 0) return; [p.days[di - 1], p.days[di]] = [p.days[di], p.days[di - 1]]; }
+    else if (a === 'newEx') {
+      const name = $('#nx-name').value.trim();
+      if (!name) { toast('Hareket adını yaz'); return; }
+      const id = newExerciseId(name);
+      const def = { name, muscle: $('#nx-muscle').value, type: $('#nx-type').value };
+      state.training.customExercises[id] = def;
+      registerExercises({ [id]: def });
+      persist();
+      toast(`${name} kütüphaneye eklendi`);
+    } else if (a === 'cancel') { editing = null; renderEditor(); return; }
+    else if (a === 'delete') {
+      if (!confirm(`"${p.name}" programı silinsin mi? Antrenman geçmişi korunur.`)) return;
+      delete state.training.customPrograms[editing.id];
+      if (state.training.programId === editing.id) state.training.programId = 'upperLower4';
+      editing = null; persist(); renderTrain(); return;
+    } else if (a === 'save') {
+      const errs = validateProgram(p);
+      if (errs.length) { renderEditor(errs); return; }
+      const id = editing.id || `u_${Date.now()}`;
+      state.training.customPrograms[id] = { ...p, custom: true };
+      if (state.training.programId !== id && state.training.draft) state.training.draft = null;
+      state.training.programId = id;
+      editing = null; persist(); toast('Program kaydedildi'); renderTrain(); return;
+    }
+    renderEditor();
+  });
+}
+
+// ---------- Ölçüler ----------
+const MEASURE_KEYS = Object.keys(MEASURE_FIELDS);
+
+function fillMeasure(date) {
+  const f = $('#measure-form');
+  const m = state.measurements.find((x) => x.date === date);
+  f.date.value = date;
+  MEASURE_KEYS.forEach((k) => { f[k].value = m?.[k] ?? ''; });
+  $('#measure-delete').classList.toggle('hidden', !m);
+  renderMeasureHistory();
+}
+
+function renderMeasureHistory() {
+  const list = sortEntries(state.measurements);
+  if (!list.length) { $('#measure-history').innerHTML = ''; return; }
+  const cell = (m, prev, k) => {
+    if (m[k] == null) return '<td>–</td>';
+    const d = prev && prev[k] != null ? round(m[k] - prev[k], 1) : null;
+    return `<td>${m[k]}${d ? ` <small class="${d < 0 ? 'down' : 'up'}">${d > 0 ? '+' : ''}${d}</small>` : ''}</td>`;
+  };
+  const rows = list.map((m, i) => `<tr><td><button type="button" class="link" data-medit="${m.date}">${m.date.slice(5)}</button></td>${MEASURE_KEYS.map((k) => cell(m, list[i - 1], k)).join('')}</tr>`).reverse();
+  const t = measureTrend(list);
+  const total = t ? `<tr><th>Toplam</th>${MEASURE_KEYS.map((k) => `<th>${t.delta[k] != null ? (t.delta[k] > 0 ? '+' : '') + t.delta[k] : ''}</th>`).join('')}</tr>` : '';
+  $('#measure-history').innerHTML = `<thead><tr><th>Tarih</th>${MEASURE_KEYS.map((k) => `<th>${MEASURE_FIELDS[k]}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody><tfoot>${total}</tfoot>`;
+}
+
+$('#measure-form').addEventListener('click', (e) => { const d = e.target.dataset.medit; if (d) fillMeasure(d); });
+$('#measure-form').date.addEventListener('change', (e) => e.target.value && fillMeasure(e.target.value));
+$('#measure-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const m = { date: f.date.value };
+  MEASURE_KEYS.forEach((k) => { m[k] = num(f[k].value); });
+  if (MEASURE_KEYS.every((k) => m[k] == null)) { toast('En az bir ölçü gir'); return; }
+  upsertMeasurement(state, m);
+  persist();
+  fillMeasure(m.date);
+  toast('Ölçü kaydedildi');
+});
+$('#measure-delete').onclick = () => {
+  const d = $('#measure-form').date.value;
+  if (!confirm(`${d} ölçüsü silinsin mi?`)) return;
+  state.measurements = state.measurements.filter((x) => x.date !== d);
+  persist();
+  fillMeasure(d);
+};
+
+function waistDeltaFor(wk) {
+  return wk ? measureDelta(state.measurements, 'waist', wk.from, wk.to) : null;
+}
+
 // ---------- Örnek veri ----------
 $('#demo-btn').onclick = () => {
   const start = addDays(today(), -34);
@@ -505,6 +673,7 @@ $('#demo-btn').onclick = () => {
     });
     s.training.sessions.push({ id: `demo-${i}`, date: addDays(start, i), dayName: day.name, sets, note: '' });
   }
+  [85, 84.3, 83.7, 83.1, 82.4].forEach((waist, i) => s.measurements.push({ date: addDays(start, i * 7 + 6), waist, hip: round(98 - i * 0.4, 1), chest: round(104 - i * 0.2, 1), arm: 38.5, thigh: round(60 - i * 0.3, 1), bodyFat: null }));
   state = s;
   persist();
   toast('Örnek veri yüklendi');
@@ -523,8 +692,13 @@ function render() {
   if (active === 'history') renderHistory();
   if (active === 'settings') fillProfile();
   if (active === 'log' && !$('#log-form').date.value) fillLog(today());
+  if (active === 'log' && !$('#measure-form').date.value) fillMeasure(today());
 }
 
 let startTab = 'dash';
 try { startTab = localStorage.getItem('bulut.tab') || 'dash'; } catch {}
 go($(`#view-${startTab}`) ? startTab : 'dash');
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}

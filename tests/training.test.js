@@ -73,3 +73,27 @@ test('program günleri dönüşümlü', () => {
   assert.equal(nextDayIndex(p, [sess('2026-01-01', 80, [8], 'bench', 'Full body C')]), 0);
   assert.equal(nextDayIndex(p, [sess('2026-01-01', 80, [8], 'bench', 'Full body A')]), 1);
 });
+
+import { registerExercises, newExerciseId, cloneProgram, validateProgram, allPrograms, EXERCISES } from '../js/training.js';
+
+test('özel hareket kaydı ve id üretimi', () => {
+  const id = newExerciseId('Smith Incline Press');
+  assert.equal(id, 'c_smith_incline_press');
+  registerExercises({ [id]: { name: 'Smith Incline Press', muscle: 'gogus', type: 'c' }, bad: { name: 'x', muscle: 'yok' } });
+  assert.equal(EXERCISES[id].muscle, 'gogus');
+  assert.equal(EXERCISES.bad, undefined);
+  assert.equal(newExerciseId('Smith Incline Press'), 'c_smith_incline_press_2');
+});
+
+test('program kopyalama ve doğrulama', () => {
+  const c = cloneProgram(PROGRAMS.ppl6);
+  c.days[0].items[0].sets = 9;
+  assert.equal(PROGRAMS.ppl6.days[0].items[0].sets, 3, 'orijinal değişmemeli');
+  assert.deepEqual(validateProgram(c), []);
+  c.days[1].name = c.days[0].name;
+  c.days[2].items = [];
+  c.days[0].items[1].repMin = 12; c.days[0].items[1].repMax = 8;
+  const errs = validateProgram(c);
+  assert.equal(errs.length, 3);
+  assert.ok(allPrograms({ my: c }).my && allPrograms({}).ppl6);
+});
