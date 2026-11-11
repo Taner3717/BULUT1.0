@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>BULUT 1.0 Koçluk</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BULUT">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">BULUT <span>1.0</span></div>
+    <div id="phase" class="phase"></div>
+  </header>
+
+  <main>
+    <!-- PANO -->
+    <section id="view-dash" class="view active">
+      <div id="onboard" class="card hidden">
+        <h2>Hoş geldin</h2>
+        <p>Başlamak için <b>Ayarlar</b>'dan profilini ve hedeflerini gir, sonra her sabah <b>Kayıt</b> ekranından günlük verini ekle. Denemek istersen örnek veri yükleyebilirsin.</p>
+        <div class="row"><button data-go="settings">Profili ayarla</button><button class="ghost" id="demo-btn">Örnek veri yükle</button></div>
+      </div>
+      <div id="today-banner" class="today-banner hidden"></div>
+      <div class="stats" id="stats"></div>
+      <div class="card">
+        <div class="card-head"><h2>Kilo trendi</h2><span class="muted" id="chart-legend"></span></div>
+        <div id="chart" class="chart"></div>
+      </div>
+      <div class="card" id="coach-card"></div>
+    </section>
+
+    <!-- KAYIT -->
+    <section id="view-log" class="view">
+      <form id="log-form" class="card" autocomplete="off">
+        <div class="card-head"><h2>Günlük kayıt</h2><input type="date" name="date" required></div>
+        <fieldset>
+          <legend>Sabah</legend>
+          <label>Kilo (kg)<input name="weight" type="number" step="any" inputmode="decimal"></label>
+          <label>Uyku (saat)<input name="sleep" type="number" step="any" inputmode="decimal"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Nasıl hissediyorsun? (1–10)</legend>
+          <label>Stres <output></output><input name="stress" type="range" min="1" max="10" value="5"></label>
+          <label>Enerji <output></output><input name="energy" type="range" min="1" max="10" value="5"></label>
+          <label>Açlık <output></output><input name="hunger" type="range" min="1" max="10" value="5"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Aktivite</legend>
+          <label>Adım<input name="steps" type="number" step="1" inputmode="numeric"></label>
+          <label>Kardiyo (dk)<input name="cardioMin" type="number" step="1" inputmode="numeric"></label>
+          <label class="check"><input name="trained" type="checkbox"> Antrenman yapıldı</label>
+        </fieldset>
+        <fieldset>
+          <legend>Beslenme (FatSecret gün sonu)</legend>
+          <label>Kalori<input name="kcal" type="number" step="1" inputmode="numeric"></label>
+          <label>Protein (g)<input name="protein" type="number" step="1" inputmode="numeric"></label>
+          <label>Karb (g)<input name="carbs" type="number" step="1" inputmode="numeric"></label>
+          <label>Yağ (g)<input name="fat" type="number" step="1" inputmode="numeric"></label>
+        </fieldset>
+        <label class="full">Not<textarea name="note" rows="2" placeholder="Pump, sindirim, regl, sakatlık, özel durum…"></textarea></label>
+        <div class="row"><button type="submit">Kaydet</button><button type="button" class="ghost danger hidden" id="log-delete">Bu günü sil</button></div>
+        <div id="log-feedback" class="feedback"></div>
+      </form>
+      <form id="measure-form" class="card" autocomplete="off">
+        <div class="card-head"><h2>Vücut ölçüleri</h2><input type="date" name="date" required></div>
+        <p class="muted">Haftada bir, aynı gün ve saatte, sabah aç karnına ölç. Bel: göbek hizasından, nefes verdikten sonra. Boyun: âdemelmasının hemen altından. Bel + boyun (kadınlarda + kalça) ile yağ oranı tahmin edilir.</p>
+        <fieldset>
+          <legend>cm</legend>
+          <label>Bel<input name="waist" type="number" step="any" inputmode="decimal"></label>
+          <label>Kalça<input name="hip" type="number" step="any" inputmode="decimal"></label>
+          <label>Boyun<input name="neck" type="number" step="any" inputmode="decimal"></label>
+          <label>Göğüs<input name="chest" type="number" step="any" inputmode="decimal"></label>
+          <label>Kol<input name="arm" type="number" step="any" inputmode="decimal"></label>
+          <label>Bacak<input name="thigh" type="number" step="any" inputmode="decimal"></label>
+          <label>Yağ % (ops.)<input name="bodyFat" type="number" step="any" inputmode="decimal"></label>
+        </fieldset>
+        <div class="row"><button type="submit">Ölçüyü kaydet</button><button type="button" class="ghost danger hidden" id="measure-delete">Sil</button></div>
+        <div class="table-wrap"><table id="measure-history"></table></div>
+      </form>
+      <div class="card">
+        <div class="card-head"><h2>Geçmiş kayıtlar</h2><span class="muted" id="history-count"></span></div>
+        <div class="table-wrap"><table id="history"></table></div>
+      </div>
+    </section>
+
+    <!-- ANTRENMAN -->
+    <section id="view-train" class="view">
+      <div class="card" id="train-program"></div>
+      <div id="train-editor"></div>
+      <div id="train-workout"></div>
+      <div class="card" id="train-week"></div>
+      <div class="card" id="train-progress"></div>
+      <div class="card" id="train-history"></div>
+    </section>
+
+    <!-- İLERLEME -->
+    <section id="view-progress" class="view">
+      <div class="card" id="comp-card"></div>
+      <div class="card" id="photos-card">
+        <div class="card-head"><h2>İlerleme fotoğrafları</h2>
+          <label class="button">Fotoğraf ekle<input type="file" id="photo-input" accept="image/*" multiple hidden></label></div>
+        <div class="row wrap photo-opts">
+          <label>Tarih<input type="date" id="photo-date"></label>
+          <label>Poz<select id="photo-pose"></select></label>
+        </div>
+        <p class="muted">Her hafta aynı ışıkta, aynı açıdan, sabah aç karnına çek. Fotoğraflar küçültülüp yalnızca bu cihazda saklanır; JSON yedeğine dahil değildir.</p>
+        <div id="photo-compare"></div>
+        <div id="photo-list"></div>
+      </div>
+      <div id="weeks"></div>
+    </section>
+
+    <!-- PLAN -->
+    <section id="view-plan" class="view">
+      <div class="card" id="meal-card"></div>
+      <div class="card" id="plan-calendar"></div>
+      <div class="card" id="peak-card"></div>
+    </section>
+
+    <!-- AYARLAR -->
+    <section id="view-settings" class="view">
+      <form id="profile-form" class="card" autocomplete="off">
+        <h2>Profil ve hedefler</h2>
+        <fieldset>
+          <legend>Profil</legend>
+          <label>Ad<input name="name"></label>
+          <label>Cinsiyet<select name="sex"><option value="erkek">Erkek</option><option value="kadın">Kadın</option></select></label>
+          <label>Boy (cm)<input name="heightCm" type="number" step="1"></label>
+          <label>Dönem<select name="goal"><option value="cut">Hazırlık / yağ yakımı</option><option value="bulk">Gelişim / bulk</option><option value="maintain">Koruma</option></select></label>
+        </fieldset>
+        <fieldset>
+          <legend>Takvim</legend>
+          <label>Başlangıç tarihi<input name="startDate" type="date"></label>
+          <label>Yarış tarihi<input name="showDate" type="date"></label>
+          <label>Başlangıç kilosu<input name="startWeight" type="number" step="any"></label>
+          <label>Hedef sahne kilosu<input name="targetWeight" type="number" step="any"></label>
+          <label>Haftalık hedef hız (%)<input name="targetRatePct" type="number" step="any" min="0" max="2"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Günlük hedefler</legend>
+          <label>Kalori<input name="t.kcal" type="number" step="1"></label>
+          <label>Protein (g)<input name="t.protein" type="number" step="1"></label>
+          <label>Karb (g)<input name="t.carbs" type="number" step="1"></label>
+          <label>Yağ (g)<input name="t.fat" type="number" step="1"></label>
+          <label>Adım<input name="t.steps" type="number" step="1"></label>
+          <label>Kardiyo (dk)<input name="t.cardioMin" type="number" step="1"></label>
+        </fieldset>
+        <p class="muted" id="macro-check"></p>
+        <button type="submit">Kaydet</button>
+      </form>
+      <div class="card">
+        <h2>Hedef değişiklik geçmişi</h2>
+        <ul id="target-history" class="plain"></ul>
+      </div>
+      <div class="card">
+        <h2>Veri</h2>
+        <p class="muted">Veriler sadece bu cihazın tarayıcısında saklanır. Düzenli yedek al. Telefon değiştirirken "Tam yedek"i kullan; aynı "Yedek yükle" ile fotoğraflar da geri gelir.</p>
+        <div class="row wrap">
+          <button class="ghost" id="export-json">Yedek indir (JSON)</button>
+          <button class="ghost" id="export-full">Tam yedek (fotoğraflar dahil)</button>
+          <label class="button ghost">Yedek yükle<input type="file" id="import-json" accept="application/json,.json" hidden></label>
+          <button class="ghost" id="export-csv">CSV indir (Sheets)</button>
+          <button class="ghost danger" id="reset">Tüm veriyi sil</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Google Sheets'ten içe aktar</h2>
+        <p class="muted">Sheets'te başlık satırı dahil satırları seçip kopyala ve buraya yapıştır ya da CSV dosyası seç. Tanınan başlıklar: Tarih, Kilo, Uyku, Stres, Enerji, Açlık, Kardiyo, Adım, Kalori, Protein, Karb, Yağ, Antrenman, Not. Aynı tarihli kayıtlarda sadece dolu hücreler güncellenir.</p>
+        <textarea id="import-text" rows="5" placeholder="Tarih&#9;Kilo&#9;Uyku&#9;Adım&#10;10.11.2026&#9;80,4&#9;7,5&#9;12000"></textarea>
+        <div class="row wrap">
+          <button id="import-csv-btn">İçe aktar</button>
+          <label class="button ghost">CSV dosyası seç<input type="file" id="import-csv-file" accept=".csv,.tsv,.txt,text/csv" hidden></label>
+        </div>
+        <p class="muted" id="import-result"></p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-go="dash" class="active">Pano</button>
+    <button data-go="log">Kayıt</button>
+    <button data-go="train">İdman</button>
+    <button data-go="progress">İlerleme</button>
+    <button data-go="plan">Plan</button>
+    <button data-go="settings">Ayarlar</button>
+  </nav>
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

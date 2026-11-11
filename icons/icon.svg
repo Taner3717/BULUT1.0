@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  <path d="M136 330a74 74 0 0 1 14-146 104 104 0 0 1 198-18 84 84 0 0 1 26 164z" fill="#2563eb"/>
+  <path d="M168 300l60-60 44 40 80-86" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="256" y="430" font-family="Arial, sans-serif" font-weight="800" font-size="72" fill="#fff" text-anchor="middle" letter-spacing="6">BULUT</text>
+</svg>
