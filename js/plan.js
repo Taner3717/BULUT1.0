@@ -153,3 +153,29 @@ export function targetsForDate(date, profile, events, ctx = {}) {
   if (e && isNum(ctx.maintenance)) return { targets: eventTargets(e.type, profile.targets, ctx.maintenance, ctx.bw), label: EVENT_TYPES[e.type], event: e };
   return { targets: profile.targets, label: null };
 }
+
+// ---------- Öğün planı ----------
+// count öğün; trainAfter = antrenman kaçıncı öğünden sonra (0 = ilk öğünden önce, -1 = antrenman yok).
+// Protein eşit; karbonhidrat antrenman öncesi ve sonrası öğünlerde yoğun; yağ antrenman çevresinde düşük.
+export function mealPlan(targets, count = 4, trainAfter = 2) {
+  const n = Math.min(6, Math.max(2, count));
+  const pre = trainAfter >= 1 && trainAfter <= n ? trainAfter - 1 : -1;
+  const post = trainAfter >= 0 && trainAfter < n ? trainAfter : -1;
+  const weights = (preW, postW) => Array.from({ length: n }, (_, i) => (i === pre ? preW : i === post ? postW : 1));
+  const split = (total, w) => {
+    const sum = w.reduce((a, b) => a + b, 0);
+    const raw = w.map((x) => (total * x) / sum);
+    const out = raw.map(Math.floor);
+    let rest = total - out.reduce((a, b) => a + b, 0);
+    raw.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (rest-- > 0) out[i]++; });
+    return out;
+  };
+  const p = split(Math.round(targets.protein), Array(n).fill(1));
+  const c = split(Math.round(targets.carbs), weights(1.6, 2));
+  const f = split(Math.round(targets.fat), weights(0.4, 0.4));
+  return Array.from({ length: n }, (_, i) => ({
+    index: i + 1,
+    role: i === pre ? 'Antrenman öncesi' : i === post ? 'Antrenman sonrası' : '',
+    protein: p[i], carbs: c[i], fat: f[i], kcal: p[i] * 4 + c[i] * 4 + f[i] * 9,
+  }));
+}

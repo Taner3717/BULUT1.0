@@ -20,12 +20,12 @@ GitHub Pages ile de yayınlanabilir (statik dosyalar, derleme adımı yok).
 
 | Ekran | İçerik |
 |---|---|
-| **Pano** | Bugünün özel günü (refeed, diyet molası, peak week), 7 günlük ortalama kilo, haftalık/toplam değişim, bel değişimi, yarışa kalan gün, uyum, toparlanma, kilo trendi grafiği, koç kararı |
+| **Pano** | Bugünün özel günü (refeed, diyet molası, peak week), 7 günlük ortalama kilo ve plana göre durum, haftalık/toplam değişim, bel değişimi, yarışa kalan gün, uyum, toparlanma, kilo trendi grafiği, koç kararı |
 | **Kayıt** | Günlük giriş: kilo, uyku, stres/enerji/açlık (1–10), adım, kardiyo, antrenman, FatSecret gün sonu makroları, not. Kayıttan sonra o günün etkin hedeflerine göre geri bildirim. Haftalık vücut ölçüleri (bel, kalça, göğüs, kol, bacak, yağ %), geçmiş kayıtlar |
 | **İdman** | Hazır ya da kendi oluşturduğun programlar (program düzenleyici, kütüphaneye özel hareket ekleme), set/kilo/tekrar/RIR kaydı (taslak otomatik saklanır), bir sonraki seans için ağırlık önerisi, kas grubu başına haftalık hacim, hareket bazında kuvvet grafiği (e1RM), plato ve deload uyarıları |
-| **İlerleme** | İlerleme fotoğrafları (ön, yan, arka, poz) ve iki tarihi yan yana karşılaştırma; haftalık özetler ve koç değerlendirmeleri |
-| **Plan** | Diyet molası ve refeed takvimi (otomatik öneri), peak week planlayıcı |
-| **Ayarlar** | Profil, yarış takvimi, hedef hız, günlük hedefler, hedef değişiklik geçmişi, JSON yedek, CSV dışa aktarma, Google Sheets'ten yapıştırarak/CSV ile içe aktarma |
+| **İlerleme** | Vücut kompozisyonu (yağ %, yağsız kütle, FFMI, sahne kilosu tahmini), ilerleme fotoğrafları (ön, yan, arka, poz) ve iki tarihi yan yana karşılaştırma; haftalık özetler ve koç değerlendirmeleri |
+| **Plan** | Günlük öğün planı, diyet molası ve refeed takvimi (otomatik öneri), peak week planlayıcı |
+| **Ayarlar** | Profil, yarış takvimi, hedef hız, günlük hedefler, hedef değişiklik geçmişi, JSON yedek, fotoğraflar dahil tam yedek, CSV dışa aktarma, Google Sheets'ten yapıştırarak/CSV ile içe aktarma |
 
 ## Koç karar motoru (`js/coach.js`)
 
@@ -95,10 +95,27 @@ günlük kaydını "antrenman yapıldı" olarak işaretler.
   - Sabah görünümüne göre ayar: düz → karbonhidrat +%25, taşmış/bulanık → −%40, dolu → değişiklik yok.
   - Peak week günlerinin hedefleri Pano ve Kayıt ekranlarına otomatik yansır.
 
+## Vücut kompozisyonu
+
+- **Yağ oranı**: girilmişse ölçüdeki yağ %, yoksa US Navy formülü (erkek: bel, boyun, boy; kadın: + kalça).
+  ±3–4 puan hata payı vardır, eğilim için kullanılır.
+- **Yağsız kütle, FFMI** (1.80 m'ye normalize), yağsız kütle başına protein (deficitte 2.3–3.1 g önerilir).
+- **Sahne kilosu tahmini**: mevcut yağsız kütleyle erkekte ~%5, kadında ~%12 yağa denk gelen kilo
+  (%0–3 yağsız kütle kaybı varsayımıyla bir aralık). Ayarlardaki hedef sahne kilosu bu aralıkla karşılaştırılır.
+- **Plan çizgisi**: kilo grafiğinde başlangıç kilosundan hedef sahne kilosuna doğrusal plan; Pano'da 7 günlük
+  ortalamanın planın önünde mi gerisinde mi olduğu yazar.
+
+## Öğün planı
+
+Günün etkin hedefleri (refeed, diyet molası ve peak week dahil) 2–6 öğüne bölünür. Protein eşit dağılır;
+karbonhidrat antrenman öncesi (×1.6) ve sonrası (×2) öğünlerde yoğunlaşır, yağ bu öğünlerde düşük tutulur (×0.4).
+Toplamlar günlük hedefle birebir tutar.
+
 ## İlerleme fotoğrafları (`js/photos.js`)
 
 Fotoğraflar uzun kenarı 1080 px olacak şekilde küçültülüp JPEG olarak **IndexedDB'de, yalnızca o cihazda**
-saklanır (sunucuya gönderilmez, JSON yedeğe dahil değildir). Birden fazla fotoğraf seçildiğinde pozlar sırayla
+saklanır (sunucuya gönderilmez). Normal JSON yedeğe dahil değildir; Ayarlar'daki **Tam yedek** fotoğrafları da
+içerir ve aynı "Yedek yükle" düğmesiyle başka bir cihaza geri yüklenir. Birden fazla fotoğraf seçildiğinde pozlar sırayla
 atanır (ön → yan → arka → poz). Karşılaştırmada her fotoğrafın altında o tarihteki 7 günlük ortalama kilo görünür.
 
 ## Dosya yapısı

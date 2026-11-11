@@ -73,3 +73,39 @@ test('diyet molası haftasında karar verilmez; uyum etkin hedefe göre', () => 
   const r = evaluateWeek(w, p, '2026-01-19', { breakDays: eventDaysIn(ev, '2026-01-05', w.to) });
   assert.equal(r.status, 'break');
 });
+
+import { mealPlan } from '../js/plan.js';
+import { navyBodyFat, composition, plannedWeight } from '../js/coach.js';
+
+test('öğün planı: toplamlar korunur, antrenman çevresi karb ağırlıklı', () => {
+  const t = { protein: 200, carbs: 250, fat: 65 };
+  const m = mealPlan(t, 4, 2);
+  assert.equal(m.length, 4);
+  assert.equal(m.reduce((a, x) => a + x.protein, 0), 200);
+  assert.equal(m.reduce((a, x) => a + x.carbs, 0), 250);
+  assert.equal(m.reduce((a, x) => a + x.fat, 0), 65);
+  assert.equal(m[1].role, 'Antrenman öncesi');
+  assert.equal(m[2].role, 'Antrenman sonrası');
+  assert.ok(m[2].carbs > m[0].carbs && m[2].fat < m[0].fat);
+  assert.ok(mealPlan(t, 3, -1).every((x) => !x.role));
+  assert.equal(mealPlan(t, 3, 0)[0].role, 'Antrenman sonrası');
+});
+
+test('Navy yağ oranı ve kompozisyon', () => {
+  const bf = navyBodyFat({ sex: 'erkek', heightCm: 178, waist: 84, neck: 39 });
+  assert.ok(bf > 14 && bf < 17, String(bf));
+  assert.ok(navyBodyFat({ sex: 'kadın', heightCm: 165, waist: 70, hip: 96, neck: 32 }) > 20);
+  assert.equal(navyBodyFat({ sex: 'erkek', heightCm: 178, waist: 84 }), null);
+  const c = composition({ weight: 80, bodyFat: 15, heightCm: 178, sex: 'erkek', targetWeight: 74 });
+  assert.equal(c.lbm, 68);
+  assert.equal(c.stageHigh, 71.6);
+  assert.ok(c.notes[0].includes('üstünde'));
+  assert.ok(composition({ weight: 80, bodyFat: 15, heightCm: 178, targetWeight: 71 }).notes[0].includes('uyumlu'));
+});
+
+test('plan çizgisi', () => {
+  const p = { startDate: '2026-01-01', showDate: '2026-01-11', startWeight: 80, targetWeight: 70 };
+  assert.equal(plannedWeight(p, '2026-01-06'), 75);
+  assert.equal(plannedWeight(p, '2026-03-01'), 70);
+  assert.equal(plannedWeight({ ...p, showDate: '' }, '2026-01-06'), null);
+});

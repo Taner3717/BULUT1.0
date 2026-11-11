@@ -159,3 +159,5 @@ h3.sub { font-size: 13px; color: var(--muted); margin: 12px 0 4px; font-weight: 
 .chart circle.pt { fill: var(--accent); }
 s.muted { font-weight: 400; }
 .tabs button { flex: 1 1 0; min-width: 0; font-size: 11.5px; padding: 14px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; }
+.chart .planline { fill: none; stroke: var(--ok); stroke-width: 1.5; stroke-dasharray: 6 4; opacity: .9; }
+.dot.plan { background: var(--ok); }

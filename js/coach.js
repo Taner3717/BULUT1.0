@@ -443,7 +443,7 @@ export function parseCSV(text) {
 }
 
 // ---------- Vücut ölçüleri ----------
-export const MEASURE_FIELDS = { waist: 'Bel', hip: 'Kalça', chest: 'Göğüs', arm: 'Kol', thigh: 'Bacak', bodyFat: 'Yağ %' };
+export const MEASURE_FIELDS = { waist: 'Bel', hip: 'Kalça', neck: 'Boyun', chest: 'Göğüs', arm: 'Kol', thigh: 'Bacak', bodyFat: 'Yağ %' };
 
 // [from, to] aralığındaki son ölçü ile bu aralıktan önceki son ölçü arasındaki fark
 export function measureDelta(measurements, field, from, to) {
@@ -464,4 +464,54 @@ export function measureTrend(measurements) {
     if (a && b && a !== b) out[k] = round(b[k] - a[k], 1);
   }
   return { from: first.date, to: last.date, delta: out };
+}
+
+// ---------- Vücut kompozisyonu ----------
+// US Navy yöntemi (cm). Erkek: bel, boyun, boy. Kadın: bel, kalça, boyun, boy.
+export function navyBodyFat({ sex, heightCm, waist, neck, hip }) {
+  if (!isNum(heightCm) || !isNum(waist) || !isNum(neck) || heightCm <= 0) return null;
+  let bf;
+  if (sex === 'kadın') {
+    if (!isNum(hip) || waist + hip - neck <= 0) return null;
+    bf = 495 / (1.29579 - 0.35004 * Math.log10(waist + hip - neck) + 0.221 * Math.log10(heightCm)) - 450;
+  } else {
+    if (waist - neck <= 0) return null;
+    bf = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(heightCm)) - 450;
+  }
+  return bf > 2 && bf < 60 ? round(bf, 1) : null;
+}
+
+// Sahne yağ oranı varsayımı: erkek ~%5, kadın ~%12. Yağsız kütle kaybı %0 (iyimser) – %3 (gerçekçi).
+export const STAGE_BF = { erkek: 5, kadın: 12 };
+
+export function composition({ weight, bodyFat, heightCm, sex = 'erkek', targetWeight = 0 }) {
+  if (!isNum(weight) || !isNum(bodyFat)) return null;
+  const lbm = weight * (1 - bodyFat / 100);
+  const h = heightCm / 100;
+  const ffmi = isNum(heightCm) && heightCm > 0 ? lbm / (h * h) : null;
+  const stageBf = STAGE_BF[sex] ?? 5;
+  const stageHigh = lbm / (1 - stageBf / 100);
+  const stageLow = (lbm * 0.97) / (1 - stageBf / 100);
+  const out = {
+    bodyFat, lbm: round(lbm, 1), fatKg: round(weight - lbm, 1),
+    ffmi: round(ffmi, 1), ffmiNorm: ffmi != null ? round(ffmi + 6.1 * (1.8 - h), 1) : null,
+    stageBf, stageLow: round(stageLow, 1), stageHigh: round(stageHigh, 1), notes: [],
+  };
+  if (targetWeight > 0) {
+    if (targetWeight > stageHigh + 0.5) out.notes.push(`Hedef sahne kilon (${targetWeight} kg) bu kas kütlesiyle ~%${stageBf} yağa denk gelen ${out.stageLow}–${out.stageHigh} kg aralığının üstünde: sahnede yeterince sıkı olmayabilirsin.`);
+    else if (targetWeight < stageLow - 1) out.notes.push(`Hedef sahne kilon (${targetWeight} kg) tahmini aralığın (${out.stageLow}–${out.stageHigh} kg) altında: gereğinden fazla kas kaybı riski.`);
+    else out.notes.push(`Hedef sahne kilon tahmini aralıkla (${out.stageLow}–${out.stageHigh} kg) uyumlu.`);
+  }
+  if (out.ffmiNorm != null && out.ffmiNorm >= 25) out.notes.push('Normalize FFMI 25 ve üstü: ölçüm hatası olabilir, yağ oranını başka yöntemle doğrula.');
+  return out;
+}
+
+// Başlangıç → yarış arası doğrusal hedef kilo
+export function plannedWeight(profile, date) {
+  const { startDate, showDate, startWeight, targetWeight } = profile;
+  if (!startDate || !showDate || !startWeight || !targetWeight) return null;
+  const total = daysBetween(startDate, showDate);
+  if (total <= 0) return null;
+  const f = clamp(daysBetween(startDate, date) / total, 0, 1);
+  return round(startWeight + (targetWeight - startWeight) * f, 2);
 }

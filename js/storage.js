@@ -5,7 +5,7 @@ const KEY = 'bulut.v1';
 export function emptyState() {
   return {
     profile: structuredClone(DEFAULT_PROFILE), entries: [], measurements: [], photos: [],
-    plan: { events: [], peak: { loadDays: 2, loadGkg: 7, checks: {}, looks: {} } },
+    plan: { events: [], peak: { loadDays: 2, loadGkg: 7, checks: {}, looks: {} }, meals: { count: 4, trainAfter: 2, date: '' } },
     training: { programId: 'upperLower4', sessions: [], draft: null, customPrograms: {}, customExercises: {} },
   };
 }
@@ -30,6 +30,7 @@ export function normalize(raw) {
   const plan = {
     events: Array.isArray(pl.events) ? pl.events.filter((e) => e && e.start && ['refeed', 'dietBreak'].includes(e.type)) : [],
     peak: { ...base.plan.peak, ...(pl.peak || {}) },
+    meals: { ...base.plan.meals, ...(pl.meals || {}) },
   };
   plan.peak.checks = plan.peak.checks && typeof plan.peak.checks === 'object' ? plan.peak.checks : {};
   plan.peak.looks = plan.peak.looks && typeof plan.peak.looks === 'object' ? plan.peak.looks : {};

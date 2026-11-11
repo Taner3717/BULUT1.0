@@ -1,14 +1,14 @@
 import {
   fmt, addDays, daysBetween, round, sortEntries, movingAverage, weeklySummaries, evaluateWeek,
   projection, phaseOf, dailyFeedback, weeklyReport, toCSV, parseCSV, kcalFromMacros,
-  MEASURE_FIELDS, measureDelta, measureTrend,
+  MEASURE_FIELDS, measureDelta, measureTrend, navyBodyFat, composition, plannedWeight, STAGE_BF,
 } from './coach.js';
 import {
   PROGRAMS, EXERCISES, MUSCLES, VOLUME_RANGE, suggestNext, stallStatus, evaluateTraining, nextDayIndex,
   registerExercises, newExerciseId, allPrograms, cloneProgram, validateProgram, sessionsFor, bestE1RM,
 } from './training.js';
-import { EVENT_TYPES, estimateMaintenance, eventOn, eventDaysIn, eventTargets, suggestPlan, peakWeekPlan, peakAdjust, targetsForDate } from './plan.js';
-import { POSES, putPhoto, deletePhoto, resizeImage, photoURL, forgetURL } from './photos.js';
+import { EVENT_TYPES, estimateMaintenance, eventOn, eventDaysIn, eventTargets, suggestPlan, peakWeekPlan, peakAdjust, targetsForDate, mealPlan } from './plan.js';
+import { POSES, putPhoto, getPhoto, deletePhoto, resizeImage, photoURL, forgetURL } from './photos.js';
 import { load, save, normalize, emptyState, upsertEntry, removeEntry, upsertMeasurement } from './storage.js';
 
 let state = load();
@@ -64,7 +64,13 @@ function renderDash() {
   const totalChange = last && profile.startWeight ? round(last.avg - profile.startWeight, 1) : null;
 
   const stats = [
-    ['7 gün ort.', show(last?.avg, ' kg'), last ? `Son tartı ${last.weight} kg` : ''],
+    ['7 gün ort.', show(last?.avg, ' kg'), (() => {
+      const pw = last ? plannedWeight(profile, last.date) : null;
+      if (pw == null) return last ? `Son tartı ${last.weight} kg` : '';
+      const d = round(last.avg - pw, 1);
+      const behind = profile.goal === 'bulk' ? d < 0 : d > 0;
+      return Math.abs(d) < 0.3 ? `Plana uygun (${pw} kg)` : `Planın ${Math.abs(d)} kg ${behind ? 'gerisinde' : 'önünde'}`;
+    })()],
     ['Haftalık değişim', cur?.changePct != null ? `${cur.changeKg > 0 ? '+' : ''}${cur.changeKg} kg` : '–', cur?.changePct != null ? `%${cur.changePct}` : 'önceki hafta yok'],
     ['Toplam', totalChange != null ? `${totalChange > 0 ? '+' : ''}${totalChange} kg` : '–', (() => {
       const w = measureTrend(state.measurements)?.delta.waist;
@@ -77,7 +83,7 @@ function renderDash() {
   $('#stats').innerHTML = stats.map(([k, v, s]) => `<div class="stat"><div class="k">${k}</div><div class="v">${esc(v)}</div><div class="s">${esc(s)}</div></div>`).join('');
 
   $('#chart').innerHTML = chartSVG(ma, profile);
-  $('#chart-legend').innerHTML = '<i class="dot raw"></i>tartı <i class="dot avg"></i>7g ort.' + (profile.targetWeight ? ' <i class="dot tgt"></i>hedef' : '');
+  $('#chart-legend').innerHTML = '<i class="dot raw"></i>tartı <i class="dot avg"></i>7g ort.' + (plannedWeight(profile, today()) != null ? ' <i class="dot plan"></i>plan' : profile.targetWeight ? ' <i class="dot tgt"></i>hedef' : '');
 
   renderCoach(weeks);
 }
@@ -139,8 +145,9 @@ function chartSVG(ma, profile) {
   const data = ma.slice(-90);
   if (data.length < 2) return '<p class="muted center">Grafik için en az 2 tartı gerekli.</p>';
   const W = 640, H = 220, pl = 38, pr = 10, pt = 10, pb = 24;
-  const vals = data.flatMap((d) => [d.weight, d.avg]);
-  if (profile.targetWeight) vals.push(profile.targetWeight);
+  const planPts = data.map((d) => ({ date: d.date, v: plannedWeight(profile, d.date) })).filter((p) => p.v != null);
+  const vals = data.flatMap((d) => [d.weight, d.avg]).concat(planPts.map((p) => p.v));
+  if (profile.targetWeight && !planPts.length) vals.push(profile.targetWeight);
   let min = Math.min(...vals), max = Math.max(...vals);
   const pad = Math.max(0.3, (max - min) * 0.08);
   min -= pad; max += pad;
@@ -155,10 +162,11 @@ function chartSVG(ma, profile) {
   }
   const labels = [data[0], data[Math.floor(data.length / 2)], data[data.length - 1]]
     .map((d, i) => `<text x="${x(d.date)}" y="${H - 6}" class="axis" text-anchor="${['start', 'middle', 'end'][i]}">${d.date.slice(5)}</text>`).join('');
-  const tgt = profile.targetWeight && profile.targetWeight > min && profile.targetWeight < max
+  const planLine = planPts.length > 1 ? `<path d="${planPts.map((p, i) => `${i ? 'L' : 'M'}${x(p.date).toFixed(1)},${y(p.v).toFixed(1)}`).join('')}" class="planline"/>` : '';
+  const tgt = !planPts.length && profile.targetWeight && profile.targetWeight > min && profile.targetWeight < max
     ? `<line x1="${pl}" x2="${W - pr}" y1="${y(profile.targetWeight)}" y2="${y(profile.targetWeight)}" class="tgt"/>` : '';
   const dots = data.map((d) => `<circle cx="${x(d.date).toFixed(1)}" cy="${y(d.weight).toFixed(1)}" r="2.5" class="raw"><title>${d.date}: ${d.weight} kg (ort. ${d.avg})</title></circle>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kilo trendi">${grid.join('')}${tgt}<path d="${path('weight')}" class="rawline"/>${dots}<path d="${path('avg')}" class="avgline"/>${labels}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kilo trendi">${grid.join('')}${tgt}${planLine}<path d="${path('weight')}" class="rawline"/>${dots}<path d="${path('avg')}" class="avgline"/>${labels}</svg>`;
 }
 
 // ---------- Kayıt ----------
@@ -296,12 +304,15 @@ $('#import-json').onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    const data = normalize(JSON.parse(await file.text()));
-    if (!confirm(`${data.entries.length} günlük kayıt yüklenecek ve mevcut veri değişecek. Devam?`)) return;
+    const raw = JSON.parse(await file.text());
+    const data = normalize(raw);
+    const nPhotos = Object.keys(raw.photoData || {}).length;
+    if (!confirm(`${data.entries.length} günlük kayıt${nPhotos ? ` ve ${nPhotos} fotoğraf` : ''} yüklenecek, mevcut veri değişecek. Devam?`)) return;
     state = data;
     registerExercises(state.training.customExercises);
+    const restored = await restorePhotos(raw.photoData);
     persist();
-    toast('Yedek yüklendi');
+    toast(`Yedek yüklendi${restored ? ` · ${restored} fotoğraf` : ''}`);
     render();
   } catch {
     toast('Dosya okunamadı');
@@ -692,7 +703,7 @@ function seriesSVG(points, { unit = '', label = '' } = {}) {
   const d0 = points[0].date, span = Math.max(1, daysBetween(d0, points[points.length - 1].date));
   const x = (d) => pl + (daysBetween(d0, d) / span) * (W - pl - pr);
   const y = (v) => pt + (1 - (v - min) / (max - min)) * (H - pt - pb);
-  const grid = [0, 1, 2, 3].map((i) => { const v = min + ((max - min) * i) / 3; return `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${pl - 6}" y="${y(v) + 4}" class="axis" text-anchor="end">${Math.round(v)}</text>`; }).join('');
+  const grid = [0, 1, 2, 3].map((i) => { const v = min + ((max - min) * i) / 3; return `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${pl - 6}" y="${y(v) + 4}" class="axis" text-anchor="end">${max - min < 10 ? v.toFixed(1) : Math.round(v)}</text>`; }).join('');
   const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(p.date).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
   const dots = points.map((p) => `<circle cx="${x(p.date).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.5" class="pt"><title>${p.date}: ${p.v} ${unit}${p.note ? ' · ' + esc(p.note) : ''}</title></circle>`).join('');
   const labels = [points[0], points[points.length - 1]].map((p, i) => `<text x="${x(p.date)}" y="${H - 6}" class="axis" text-anchor="${i ? 'end' : 'start'}">${p.date.slice(5)}</text>`).join('');
@@ -881,11 +892,93 @@ function renderPeak() {
   };
 }
 
+// ---------- Vücut kompozisyonu ----------
+function bodyFatOf(m) {
+  if (m.bodyFat != null) return { bf: m.bodyFat, src: 'girilen' };
+  const bf = navyBodyFat({ sex: state.profile.sex, heightCm: state.profile.heightCm, waist: m.waist, neck: m.neck, hip: m.hip });
+  return bf != null ? { bf, src: 'Navy' } : null;
+}
+function weightOn(date) {
+  return movingAverage(state.entries).filter((x) => x.date <= date).pop()?.avg ?? null;
+}
+
+function renderComposition() {
+  const card = $('#comp-card');
+  const p = state.profile;
+  const series = sortEntries(state.measurements).map((m) => ({ m, r: bodyFatOf(m), w: weightOn(m.date) })).filter((x) => x.r && x.w);
+  if (!series.length) {
+    card.innerHTML = `<h2>Vücut kompozisyonu</h2><p class="muted">Kayıt sekmesindeki ölçülere <b>bel</b> ve <b>boyun</b>${p.sex === 'kadın' ? ' ve <b>kalça</b>' : ''} gir (ya da yağ %'ni), Ayarlar'da boyunun doğru olduğundan emin ol. Yağ oranı, yağsız kütle ve sahne kilosu tahmini burada görünür.</p>`;
+    return;
+  }
+  const last = series[series.length - 1];
+  const c = composition({ weight: last.w, bodyFat: last.r.bf, heightCm: p.heightCm, sex: p.sex, targetWeight: p.targetWeight });
+  const first = series[0];
+  const lbmFirst = round(first.w * (1 - first.r.bf / 100), 1);
+  const protPerLbm = p.targets.protein ? round(p.targets.protein / c.lbm, 1) : null;
+  card.innerHTML = `
+    <div class="card-head"><h2>Vücut kompozisyonu</h2><span class="muted">${last.m.date} · ${last.r.src === 'Navy' ? 'US Navy tahmini' : 'girilen değer'}</span></div>
+    <div class="grid3">
+      <div><span>Yağ oranı</span>%${c.bodyFat}</div><div><span>Yağsız kütle</span>${c.lbm} kg</div><div><span>Yağ kütlesi</span>${c.fatKg} kg</div>
+      <div><span>FFMI (norm.)</span>${show(c.ffmiNorm)}</div><div><span>Sahne tahmini</span>${c.stageLow}–${c.stageHigh} kg</div><div><span>Protein / yağsız kg</span>${show(protPerLbm, ' g')}</div>
+    </div>
+    ${series.length > 1 ? `<p class="muted">İlk ölçümden bu yana: yağ ${round(last.r.bf - first.r.bf, 1) > 0 ? '+' : ''}${round(last.r.bf - first.r.bf, 1)} puan, yağsız kütle ${round(c.lbm - lbmFirst, 1) > 0 ? '+' : ''}${round(c.lbm - lbmFirst, 1)} kg.</p>
+      <div class="chart">${seriesSVG(series.map((x) => ({ date: x.m.date, v: x.r.bf })), { unit: '%', label: 'Yağ oranı' })}</div>` : ''}
+    <ul class="plain">${c.notes.map((n) => `<li>• ${esc(n)}</li>`).join('')}
+      ${protPerLbm != null && p.goal === 'cut' && protPerLbm < 2.3 ? '<li>• Deficitte yağsız kütle başına 2.3–3.1 g protein önerilir; hedefini artırmayı düşün.</li>' : ''}</ul>
+    <p class="muted">Navy yöntemi ±3–4 puan hata payı taşır; mutlak değerden çok eğilime bak. Sahne tahmini erkekte ~%${STAGE_BF.erkek}, kadında ~%${STAGE_BF.kadın} yağ ve %0–3 yağsız kütle kaybı varsayar.</p>`;
+}
+
+// ---------- Öğün planı ----------
+function renderMeals() {
+  const st = state.plan.meals;
+  const date = st.date && st.date >= today() ? st.date : today();
+  const info = targetsInfo(date);
+  const plan = mealPlan(info.targets, st.count, st.trainAfter);
+  const n = st.count;
+  const trainOpts = [[-1, 'Antrenman yok'], [0, '1. öğünden önce (aç)'], ...Array.from({ length: n }, (_, i) => [i + 1, `${i + 1}. öğünden sonra`])];
+  $('#meal-card').innerHTML = `
+    <div class="card-head"><h2>Öğün planı</h2><input type="date" id="meal-date" value="${date}"></div>
+    <p class="muted">${info.label ? `<b>${esc(info.label)}</b> · ` : ''}${info.targets.kcal} kcal · P ${info.targets.protein} · K ${info.targets.carbs} · Y ${info.targets.fat}</p>
+    <div class="peak-opts">
+      <label>Öğün sayısı<select id="meal-count">${[2, 3, 4, 5, 6].map((x) => `<option ${x === n ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+      <label>Antrenman<select id="meal-train">${trainOpts.map(([v, l]) => `<option value="${v}" ${v === st.trainAfter ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Öğün</th><th>Protein</th><th>Karb</th><th>Yağ</th><th>kcal</th></tr></thead><tbody>
+      ${plan.map((m) => `<tr><td>${m.index}${m.role ? ` <span class="tag ${m.role.includes('sonrası') ? 'dietBreak' : 'load'}">${m.role}</span>` : ''}</td><td>${m.protein} g</td><td>${m.carbs} g</td><td>${m.fat} g</td><td>${m.kcal}</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="muted">Protein öğünlere eşit dağılır (öğün başına ~0.4 g/kg idealdir). Karbonhidrat antrenman öncesi ve sonrası öğünlerde yoğunlaşır, yağ bu öğünlerde düşük tutulur (sindirim hızı için).</p>`;
+  $('#meal-date').onchange = (e) => { st.date = e.target.value; persist(); renderMeals(); };
+  $('#meal-count').onchange = (e) => { st.count = +e.target.value; if (st.trainAfter > st.count) st.trainAfter = st.count; persist(); renderMeals(); };
+  $('#meal-train').onchange = (e) => { st.trainAfter = +e.target.value; persist(); renderMeals(); };
+}
+
+// ---------- Tam yedek (fotoğraflar dahil) ----------
+const blobToDataURL = (blob) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+
+$('#export-full').onclick = async () => {
+  const photoData = {};
+  let missing = 0;
+  for (const p of state.photos) {
+    try { const b = await getPhoto(p.id); if (b) photoData[p.id] = await blobToDataURL(b); else missing++; } catch { missing++; }
+  }
+  download(`bulut-tam-yedek-${today()}.json`, JSON.stringify({ ...state, photoData }), 'application/json');
+  toast(`Tam yedek hazır · ${Object.keys(photoData).length} fotoğraf${missing ? `, ${missing} eksik` : ''}`);
+};
+
+async function restorePhotos(photoData) {
+  let n = 0;
+  for (const [id, url] of Object.entries(photoData || {})) {
+    if (typeof url !== 'string' || !url.startsWith('data:image/')) continue;
+    try { await putPhoto(id, await (await fetch(url)).blob()); forgetURL(id); n++; } catch {}
+  }
+  return n;
+}
+
 // ---------- Örnek veri ----------
 $('#demo-btn').onclick = () => {
   const start = addDays(today(), -34);
   const s = emptyState();
-  Object.assign(s.profile, { name: 'Örnek', startDate: start, showDate: addDays(today(), 70), startWeight: 82, targetWeight: 74, targetRatePct: 0.75 });
+  Object.assign(s.profile, { name: 'Örnek', heightCm: 178, startDate: start, showDate: addDays(today(), 70), startWeight: 82, targetWeight: 74, targetRatePct: 0.75 });
   s.profile.targets = { kcal: 2450, protein: 190, carbs: 260, fat: 70, steps: 10000, cardioMin: 20 };
   let w = 82;
   for (let i = 0; i <= 34; i++) {
@@ -911,7 +1004,7 @@ $('#demo-btn').onclick = () => {
     });
     s.training.sessions.push({ id: `demo-${i}`, date: addDays(start, i), dayName: day.name, sets, note: '' });
   }
-  [85, 84.3, 83.7, 83.1, 82.4].forEach((waist, i) => s.measurements.push({ date: addDays(start, i * 7 + 6), waist, hip: round(98 - i * 0.4, 1), chest: round(104 - i * 0.2, 1), arm: 38.5, thigh: round(60 - i * 0.3, 1), bodyFat: null }));
+  [85, 84.3, 83.7, 83.1, 82.4].forEach((waist, i) => s.measurements.push({ date: addDays(start, i * 7 + 6), waist, hip: round(98 - i * 0.4, 1), chest: round(104 - i * 0.2, 1), arm: 38.5, neck: 39, thigh: round(60 - i * 0.3, 1), bodyFat: null }));
   s.plan.events = [{ type: 'refeed', start: addDays(start, 26), days: 1 }, ...suggestPlan(s.profile, today(), [])];
   state.photos.forEach((p) => { deletePhoto(p.id).catch(() => {}); forgetURL(p.id); });
   state = s;
@@ -927,8 +1020,8 @@ function render() {
   $('#phase').textContent = `${profile.name ? profile.name + ' · ' : ''}${phaseOf(profile, today())}${d != null && d >= 0 ? ` · ${d} gün` : ''}`;
   const active = $('.view.active').id.replace('view-', '');
   if (active === 'dash') renderDash();
-  if (active === 'progress') { renderWeeks(); renderPhotos(); }
-  if (active === 'plan') renderPlan();
+  if (active === 'progress') { renderComposition(); renderWeeks(); renderPhotos(); }
+  if (active === 'plan') { renderMeals(); renderPlan(); }
   if (active === 'train') renderTrain();
   if (active === 'log') renderHistory();
   if (active === 'settings') fillProfile();

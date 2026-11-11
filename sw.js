@@ -1,5 +1,5 @@
 // Çevrimdışı çalışma: uygulama dosyaları önbellekten, yeni sürüm arka planda güncellenir.
-const CACHE = 'bulut-v5';
+const CACHE = 'bulut-v6';
 const ASSETS = ['./', 'index.html', 'css/style.css', 'js/app.js', 'js/coach.js', 'js/training.js', 'js/storage.js', 'js/plan.js', 'js/photos.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 

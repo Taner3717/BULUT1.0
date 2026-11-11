@@ -69,11 +69,12 @@
       </form>
       <form id="measure-form" class="card" autocomplete="off">
         <div class="card-head"><h2>Vücut ölçüleri</h2><input type="date" name="date" required></div>
-        <p class="muted">Haftada bir, aynı gün ve saatte, sabah aç karnına ölç. Bel: göbek hizasından, nefes verdikten sonra.</p>
+        <p class="muted">Haftada bir, aynı gün ve saatte, sabah aç karnına ölç. Bel: göbek hizasından, nefes verdikten sonra. Boyun: âdemelmasının hemen altından. Bel + boyun (kadınlarda + kalça) ile yağ oranı tahmin edilir.</p>
         <fieldset>
           <legend>cm</legend>
           <label>Bel<input name="waist" type="number" step="any" inputmode="decimal"></label>
           <label>Kalça<input name="hip" type="number" step="any" inputmode="decimal"></label>
+          <label>Boyun<input name="neck" type="number" step="any" inputmode="decimal"></label>
           <label>Göğüs<input name="chest" type="number" step="any" inputmode="decimal"></label>
           <label>Kol<input name="arm" type="number" step="any" inputmode="decimal"></label>
           <label>Bacak<input name="thigh" type="number" step="any" inputmode="decimal"></label>
@@ -100,6 +101,7 @@
 
     <!-- İLERLEME -->
     <section id="view-progress" class="view">
+      <div class="card" id="comp-card"></div>
       <div class="card" id="photos-card">
         <div class="card-head"><h2>İlerleme fotoğrafları</h2>
           <label class="button">Fotoğraf ekle<input type="file" id="photo-input" accept="image/*" multiple hidden></label></div>
@@ -116,6 +118,7 @@
 
     <!-- PLAN -->
     <section id="view-plan" class="view">
+      <div class="card" id="meal-card"></div>
       <div class="card" id="plan-calendar"></div>
       <div class="card" id="peak-card"></div>
     </section>
@@ -157,9 +160,10 @@
       </div>
       <div class="card">
         <h2>Veri</h2>
-        <p class="muted">Veriler sadece bu cihazın tarayıcısında saklanır. Düzenli yedek al.</p>
+        <p class="muted">Veriler sadece bu cihazın tarayıcısında saklanır. Düzenli yedek al. Telefon değiştirirken "Tam yedek"i kullan; aynı "Yedek yükle" ile fotoğraflar da geri gelir.</p>
         <div class="row wrap">
           <button class="ghost" id="export-json">Yedek indir (JSON)</button>
+          <button class="ghost" id="export-full">Tam yedek (fotoğraflar dahil)</button>
           <label class="button ghost">Yedek yükle<input type="file" id="import-json" accept="application/json,.json" hidden></label>
           <button class="ghost" id="export-csv">CSV indir (Sheets)</button>
           <button class="ghost danger" id="reset">Tüm veriyi sil</button>
