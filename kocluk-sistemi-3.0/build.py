@@ -664,17 +664,17 @@ def sheet_antrenman(wb, ex):
                 kg, reps = p[6], p[3] + 1 + w * 1
                 if reps > p[4]:
                     kg, reps = round(p[6] * 1.05 * 2) / 2, p[3]
-            put(ws, f"{L(c)}{r}", kg, "in", "0.##")
+            put(ws, f"{L(c)}{r}", kg, "in", "0.0")
             put(ws, f"{L(c + 1)}{r}", reps, "in", "0")
         rng = f"$G{r}:${L(last_c)}{r}"
         idx = f"((COLUMN({rng})-COLUMN($G{r}))/2+1)"
         mask = f"({rng}<>\"\")*(MOD(COLUMN({rng})-COLUMN($G{r}),2)=0)"
         put(ws, f"{AE}{r}", f"=SUMPRODUCT(MAX({mask}*{idx}))", "auto", "0;;")
         put(ws, f"{AF}{r}", f"=IF({AE}{r}=0,0,{WEEKS + 1}-SUMPRODUCT(MAX({mask}*({WEEKS + 1}-{idx}))))", "auto", "0;;")
-        put(ws, f"{AG}{r}", f'=IF({AF}{r}=0,"",INDEX({rng},2*{AF}{r}-1))', "auto", "0.##")
-        put(ws, f"{AH}{r}", f'=IF({AE}{r}=0,"",INDEX({rng},2*{AE}{r}-1))', "auto", "0.##")
+        put(ws, f"{AG}{r}", f'=IF({AF}{r}=0,"",INDEX({rng},2*{AF}{r}-1))', "auto", "0.0")
+        put(ws, f"{AH}{r}", f'=IF({AE}{r}=0,"",INDEX({rng},2*{AE}{r}-1))', "auto", "0.0")
         put(ws, f"{AI}{r}", f'=IF({AE}{r}=0,"",IF(INDEX({rng},2*{AE}{r})="","",INDEX({rng},2*{AE}{r})))', "auto", "0")
-        put(ws, f"{AJ}{r}", f'=IF(OR({AE}{r}=0,{AE}{r}={AF}{r}),"",{AH}{r}-{AG}{r})', "auto", "+0.##;-0.##;0")
+        put(ws, f"{AJ}{r}", f'=IF(OR({AE}{r}=0,{AE}{r}={AF}{r}),"",{AH}{r}-{AG}{r})', "auto", "+0.0;-0.0;0")
         put(ws, f"{AK}{r}",
             f'=IF(OR({AE}{r}=0,{AE}{r}={AF}{r}),"",IFERROR(({AH}{r}*(1+INDEX({rng},2*{AE}{r})/30))/'
             f'({AG}{r}*(1+INDEX({rng},2*{AF}{r})/30))-1,""))', "auto", "+0.0%;-0.0%;0.0%")
@@ -714,7 +714,7 @@ def sheet_besinler(wb):
         put(ws, f"B{r}", f[1], "in", "0")
         put(ws, f"C{r}", f[2], "in")
         for col, val in (("D", f[3]), ("E", f[4]), ("F", f[5])):
-            put(ws, f"{col}{r}", val, "in", "0.##")
+            put(ws, f"{col}{r}", val, "in", "0.0")
         put(ws, f"G{r}", f'=IF(COUNT(D{r}:F{r})=3,9*D{r}+4*E{r}+4*F{r},"")', "auto", "0")
     list_dv(ws, '"g,ml,adet"', f"C{FOOD_FIRST}:C{FOOD_LAST}")
     widths(ws, {"A": 32, "B": 11, "C": 8, "D,E,F,G": 11})
@@ -750,7 +750,7 @@ def sheet_beslenme(wb, ex):
                 item = meal[1][j] if j < len(meal[1]) else (None, None)
                 put(ws, f"{A}{r}", meal[0] if j == 0 else None, "in", align=LEFT)
                 put(ws, f"{B}{r}", item[0], "in", align=LEFT)
-                put(ws, f"{C}{r}", item[1], "in", "0.##")
+                put(ws, f"{C}{r}", item[1], "in")
                 for col, src in ((D, "D"), (E, "E"), (F, "F")):
                     put(ws, f"{col}{r}",
                         f'=IF(OR({B}{r}="",{C}{r}=""),"",IFERROR({C}{r}/{look("B", f"{B}{r}")}*{look(src, f"{B}{r}")},""))',
